@@ -28,3 +28,24 @@ export function updateServerAfterAssignment(
       updatedLoad >= server.maxLoad ? "busy" : "available",
   };
 }
+export function updateServerAfterCompletion(
+  server: Server,
+  requestSize: number
+): Server {
+  const updatedLoad = Math.max(
+    server.currentLoad - requestSize,
+    0
+  );
+
+  return {
+    ...server,
+    currentLoad: updatedLoad,
+    activeRequests: Math.max(
+      server.activeRequests - 1,
+      0
+    ),
+    completedRequests:
+      server.completedRequests + 1,
+    status: "available",
+  };
+}
