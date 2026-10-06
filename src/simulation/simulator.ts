@@ -28,7 +28,8 @@ export interface SimulationOptions {
 function calculateMetrics(
   state: SimulationState
 ): SimulationMetrics {
-  const completed = state.completedRequests;
+  const completed =
+    state.completedRequests;
 
   const averageResponseTimeMs =
     completed.length === 0
@@ -36,7 +37,10 @@ function calculateMetrics(
       : completed.reduce(
           (sum, request) =>
             sum +
-            (request.totalResponseTimeMs ?? 0),
+            (
+              request.totalResponseTimeMs ??
+              0
+            ),
           0
         ) / completed.length;
 
@@ -46,7 +50,10 @@ function calculateMetrics(
       : completed.reduce(
           (sum, request) =>
             sum +
-            (request.waitingTimeMs ?? 0),
+            (
+              request.waitingTimeMs ??
+              0
+            ),
           0
         ) / completed.length;
 
@@ -68,10 +75,13 @@ function calculateMetrics(
     completedRequests:
       state.completedRequests.length,
 
-    failedRequests: state.metrics.failedRequests,
+    failedRequests:
+      state.metrics.failedRequests,
 
     averageResponseTimeMs,
+
     averageWaitingTimeMs,
+
     averageServerLoad,
   };
 }
@@ -82,24 +92,72 @@ function chooseServer(
   options: SimulationOptions
 ): Server | null {
   if (state.algorithm === "frlb") {
-    return selectFRLBServer(state.servers);
+    return selectFRLBServer(
+      state.servers
+    );
   }
 
   if (state.algorithm === "hybrid") {
-    const result = selectHybridServer(
-      request,
-      state.servers,
-      {
-        alpha: options.alpha,
-        highPriorityThreshold:
-          options.highPriorityThreshold,
-      }
-    );
+    const result =
+      selectHybridServer(
+        request,
+        state.servers,
+        {
+          alpha: options.alpha,
+          highPriorityThreshold:
+            options.highPriorityThreshold,
+        }
+      );
 
     return result?.server ?? null;
   }
 
   return null;
+}
+
+/**
+ * Recalculates every server's current response time
+ * based on current dynamic conditions.
+ */
+function refreshServerResponseTimes(
+  state: SimulationState
+): SimulationState {
+  const servers =
+    state.servers.map((server) => {
+      const serverRequests =
+        state.activeRequests.filter(
+          (request) =>
+            request.assignedServerId ===
+            server.id
+        );
+
+      const averageComplexity =
+        serverRequests.length === 0
+          ? 1
+          : serverRequests.reduce(
+              (sum, request) =>
+                sum + request.complexity,
+              0
+            ) / serverRequests.length;
+
+      const responseTime =
+        calculateDynamicResponseTime(
+          server,
+          averageComplexity,
+          state.requestQueue.length,
+          serverRequests.length
+        );
+
+      return {
+        ...server,
+        responseTime,
+      };
+    });
+
+  return {
+    ...state,
+    servers,
+  };
 }
 
 function completeFinishedRequests(
@@ -109,7 +167,8 @@ function completeFinishedRequests(
   const finishedRequests =
     state.activeRequests.filter(
       (request) =>
-        request.completionTime !== undefined &&
+        request.completionTime !==
+          undefined &&
         request.completionTime <= now
     );
 
@@ -117,24 +176,34 @@ function completeFinishedRequests(
     return state;
   }
 
-  let servers = [...state.servers];
-
-  const completedRequests: NetworkRequest[] = [
-    ...state.completedRequests,
+  let servers = [
+    ...state.servers,
   ];
 
-  for (const request of finishedRequests) {
-    if (request.assignedServerId === undefined) {
+  const completedRequests: NetworkRequest[] =
+    [
+      ...state.completedRequests,
+    ];
+
+  for (
+    const request of finishedRequests
+  ) {
+    if (
+      request.assignedServerId ===
+      undefined
+    ) {
       continue;
     }
 
-    servers = servers.map((server) =>
-      server.id === request.assignedServerId
-        ? updateServerAfterCompletion(
-            server,
-            request.requestSize
-          )
-        : server
+    servers = servers.map(
+      (server) =>
+        server.id ===
+        request.assignedServerId
+          ? updateServerAfterCompletion(
+              server,
+              request.requestSize
+            )
+          : server
     );
 
     completedRequests.push({
@@ -146,7 +215,8 @@ function completeFinishedRequests(
   const activeRequests =
     state.activeRequests.filter(
       (request) =>
-        request.completionTime === undefined ||
+        request.completionTime ===
+          undefined ||
         request.completionTime > now
     );
 
@@ -164,26 +234,58 @@ function assignRequest(
   options: SimulationOptions,
   now: number
 ): SimulationState {
-  const selectedServer = chooseServer(
-    request,
-    state,
-    options
-  );
+  const selectedServer =
+    chooseServer(
+      request,
+      state,
+      options
+    );
 
   if (!selectedServer) {
     return state;
   }
 
   const waitingTimeMs =
-    now - (request.queueEntryTime ?? request.arrivalTime);
-
-  const responseTime =
-    calculateDynamicResponseTime(
-      selectedServer,
-      request,
-      state.requestQueue.length
+    now -
+    (
+      request.queueEntryTime ??
+      request.arrivalTime
     );
 
+  /**
+   * Paper Algorithm 1 updates load first.
+   */
+  const serverAfterAssignment =
+    updateServerAfterAssignment(
+      selectedServer,
+      request.requestSize
+    );
+
+  /**
+   * Current request is about to leave the queue.
+   */
+  const queueLengthAfterAssignment =
+    Math.max(
+      state.requestQueue.length - 1,
+      0
+    );
+
+  /**
+   * Response time is calculated using the
+   * UPDATED server load.
+   */
+  const responseTime =
+    calculateDynamicResponseTime(
+      serverAfterAssignment,
+      request.complexity,
+      queueLengthAfterAssignment,
+      serverAfterAssignment.activeRequests
+    );
+
+  /**
+   * Converts simulated response-time units
+   * into a visible processing duration.
+   */
   const processingTimeMs =
     responseTime * 100;
 
@@ -192,36 +294,49 @@ function assignRequest(
 
   const updatedRequest: NetworkRequest = {
     ...request,
+
     status: "processing",
-    assignedServerId: selectedServer.id,
+
+    assignedServerId:
+      selectedServer.id,
+
     processingStartTime: now,
+
     waitingTimeMs,
+
     processingTimeMs,
+
     completionTime,
+
     totalResponseTimeMs:
-      waitingTimeMs + processingTimeMs,
+      waitingTimeMs +
+      processingTimeMs,
   };
 
-  const servers = state.servers.map((server) =>
-    server.id === selectedServer.id
-      ? {
-          ...updateServerAfterAssignment(
-            server,
-            request.requestSize
-          ),
-          responseTime,
-        }
-      : server
-  );
+  const servers =
+    state.servers.map(
+      (server) =>
+        server.id ===
+        selectedServer.id
+          ? {
+              ...serverAfterAssignment,
+              responseTime,
+            }
+          : server
+    );
 
   return {
     ...state,
+
     servers,
+
     requestQueue:
       state.requestQueue.filter(
         (queuedRequest) =>
-          queuedRequest.id !== request.id
+          queuedRequest.id !==
+          request.id
       ),
+
     activeRequests: [
       ...state.activeRequests,
       updatedRequest,
@@ -234,15 +349,22 @@ function processPBLB(
   options: SimulationOptions,
   now: number
 ): SimulationState {
-  const selection = runPBLBSelection(
-    state.requestQueue,
-    state.servers
-  );
+  const selection =
+    runPBLBSelection(
+      state.requestQueue,
+      state.servers
+    );
 
   if (!selection) {
     return state;
   }
 
+  /**
+   * runPBLBSelection chooses the request.
+   *
+   * assignRequest performs the actual
+   * dynamic assignment and state update.
+   */
   return assignRequest(
     selection.request,
     state,
@@ -256,37 +378,69 @@ export function processSimulationTick(
   options: SimulationOptions,
   now = Date.now()
 ): SimulationState {
-  let state = completeFinishedRequests(
-    currentState,
-    now
-  );
-
-  if (state.requestQueue.length === 0) {
-    return {
-      ...state,
-      metrics: calculateMetrics(state),
-    };
-  }
-
-  if (state.algorithm === "pblb") {
-    state = processPBLB(
-      state,
-      options,
+  /**
+   * 1. Complete requests whose processing
+   *    time has expired.
+   */
+  let state =
+    completeFinishedRequests(
+      currentState,
       now
     );
-  } else {
-    const request = state.requestQueue[0];
 
-    state = assignRequest(
-      request,
-      state,
-      options,
-      now
+  /**
+   * 2. Refresh response times after loads
+   *    may have decreased.
+   */
+  state =
+    refreshServerResponseTimes(
+      state
     );
+
+  /**
+   * 3. If there are queued requests,
+   *    process one during this tick.
+   */
+  if (
+    state.requestQueue.length > 0
+  ) {
+    if (
+      state.algorithm === "pblb"
+    ) {
+      state = processPBLB(
+        state,
+        options,
+        now
+      );
+    } else {
+      const request =
+        state.requestQueue[0];
+
+      state = assignRequest(
+        request,
+        state,
+        options,
+        now
+      );
+    }
   }
 
+  /**
+   * 4. Recalculate response times again
+   *    because assignment may have
+   *    increased server load.
+   */
+  state =
+    refreshServerResponseTimes(
+      state
+    );
+
+  /**
+   * 5. Update simulation metrics.
+   */
   return {
     ...state,
-    metrics: calculateMetrics(state),
+    metrics:
+      calculateMetrics(state),
   };
 }
