@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   LoadBalancingAlgorithm,
@@ -45,8 +45,37 @@ export default function Home() {
   const [complexity, setComplexity] =
     useState(5);
 
-  const [lastRequest, setLastRequest] =
-    useState<NetworkRequest | null>(null);
+  const [lastRequestId, setLastRequestId] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSimulationState((currentState) =>
+        processSimulationTick(
+          currentState,
+          {
+            alpha: 0.5,
+            highPriorityThreshold: 4,
+          },
+          Date.now()
+        )
+      );
+    }, 250);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const lastRequest =
+    simulationState.activeRequests.find(
+      (request) => request.id === lastRequestId
+    ) ??
+    simulationState.completedRequests.find(
+      (request) => request.id === lastRequestId
+    ) ??
+    simulationState.requestQueue.find(
+      (request) => request.id === lastRequestId
+    ) ??
+    null;
 
   function handleSendRequest() {
     const now = Date.now();
@@ -61,42 +90,21 @@ export default function Home() {
       queueEntryTime: now,
     };
 
-    const stateWithRequest: SimulationState = {
-      ...simulationState,
+    setLastRequestId(request.id);
+
+    setSimulationState((currentState) => ({
+      ...currentState,
       algorithm,
       requestQueue: [
-        ...simulationState.requestQueue,
+        ...currentState.requestQueue,
         request,
       ],
-    };
-
-    const updatedState = processSimulationTick(
-      stateWithRequest,
-      {
-        alpha: 0.5,
-        highPriorityThreshold: 4,
-      },
-      now
-    );
-
-    const processedRequest =
-      updatedState.activeRequests.find(
-        (activeRequest) =>
-          activeRequest.id === request.id
-      ) ??
-      updatedState.requestQueue.find(
-        (queuedRequest) =>
-          queuedRequest.id === request.id
-      ) ??
-      request;
-
-    setSimulationState(updatedState);
-    setLastRequest(processedRequest);
+    }));
   }
 
   function handleReset() {
     setSimulationState(createInitialState());
-    setLastRequest(null);
+    setLastRequestId(null);
   }
 
   return (
@@ -267,6 +275,11 @@ export default function Home() {
                       </p>
 
                       <p>
+                        Completed Requests:{" "}
+                        {server.completedRequests}
+                      </p>
+
+                      <p>
                         Status: {server.status}
                       </p>
                     </div>
@@ -365,6 +378,53 @@ export default function Home() {
               </div>
             </div>
           )}
+        </section>
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl bg-slate-900 p-4">
+            <p className="text-sm text-slate-400">
+              Total Requests
+            </p>
+
+            <p className="mt-1 text-2xl font-semibold">
+              {simulationState.metrics.totalRequests}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-900 p-4">
+            <p className="text-sm text-slate-400">
+              Completed Requests
+            </p>
+
+            <p className="mt-1 text-2xl font-semibold">
+              {simulationState.metrics.completedRequests}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-900 p-4">
+            <p className="text-sm text-slate-400">
+              Avg Response Time
+            </p>
+
+            <p className="mt-1 text-2xl font-semibold">
+              {simulationState.metrics.averageResponseTimeMs.toFixed(
+                2
+              )}{" "}
+              ms
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-900 p-4">
+            <p className="text-sm text-slate-400">
+              Avg Server Load
+            </p>
+
+            <p className="mt-1 text-2xl font-semibold">
+              {simulationState.metrics.averageServerLoad.toFixed(
+                2
+              )}
+            </p>
+          </div>
         </section>
       </div>
     </main>
