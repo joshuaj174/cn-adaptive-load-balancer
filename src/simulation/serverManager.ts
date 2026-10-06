@@ -20,20 +20,21 @@ export function updateServerAfterAssignment(
   requestSize: number
 ): Server {
   /**
-   * Algorithm 1 in the paper updates load using:
+   * Research algorithm:
    *
    * Li = Li + request size
-   *
-   * Therefore we do not clamp the load to maxLoad here.
    */
   const updatedLoad =
     server.currentLoad + requestSize;
 
   return {
     ...server,
+
     currentLoad: updatedLoad,
+
     activeRequests:
       server.activeRequests + 1,
+
     status:
       updatedLoad >= server.maxLoad
         ? "busy"
@@ -45,19 +46,28 @@ export function updateServerAfterCompletion(
   server: Server,
   requestSize: number
 ): Server {
+  /**
+   * Remove the completed request's load,
+   * but never allow the simulated server
+   * to drop below its baseline load.
+   */
   const updatedLoad = Math.max(
     server.currentLoad - requestSize,
+    server.baseLoad
+  );
+
+  const updatedActiveRequests = Math.max(
+    server.activeRequests - 1,
     0
   );
 
   return {
     ...server,
+
     currentLoad: updatedLoad,
 
-    activeRequests: Math.max(
-      server.activeRequests - 1,
-      0
-    ),
+    activeRequests:
+      updatedActiveRequests,
 
     completedRequests:
       server.completedRequests + 1,
