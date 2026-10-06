@@ -4,6 +4,7 @@ export const initialServers: Server[] = [
   {
     id: 1,
     name: "Server 1",
+    baseLoad: 20,
     currentLoad: 20,
     maxLoad: 100,
     baseResponseTime: 4.2,
@@ -16,6 +17,7 @@ export const initialServers: Server[] = [
   {
     id: 2,
     name: "Server 2",
+    baseLoad: 35,
     currentLoad: 35,
     maxLoad: 100,
     baseResponseTime: 5.1,
@@ -28,6 +30,7 @@ export const initialServers: Server[] = [
   {
     id: 3,
     name: "Server 3",
+    baseLoad: 15,
     currentLoad: 15,
     maxLoad: 100,
     baseResponseTime: 3.7,
@@ -40,6 +43,7 @@ export const initialServers: Server[] = [
   {
     id: 4,
     name: "Server 4",
+    baseLoad: 50,
     currentLoad: 50,
     maxLoad: 100,
     baseResponseTime: 6.4,
@@ -52,6 +56,7 @@ export const initialServers: Server[] = [
   {
     id: 5,
     name: "Server 5",
+    baseLoad: 25,
     currentLoad: 25,
     maxLoad: 100,
     baseResponseTime: 4.8,

@@ -116,8 +116,8 @@ function chooseServer(
 }
 
 /**
- * Recalculates every server's current response time
- * based on current dynamic conditions.
+ * Recalculates each server's response time
+ * using its current load and active requests.
  */
 function refreshServerResponseTimes(
   state: SimulationState
@@ -160,6 +160,10 @@ function refreshServerResponseTimes(
   };
 }
 
+/**
+ * Completes requests whose processing time
+ * has expired.
+ */
 function completeFinishedRequests(
   state: SimulationState,
   now: number
@@ -228,13 +232,24 @@ function completeFinishedRequests(
   };
 }
 
+/**
+ * Assigns a request to a server.
+ *
+ * If a server is already selected, such as
+ * during PBLB selection, it is used directly.
+ *
+ * Otherwise FRLB or Hybrid performs the
+ * server-selection step here.
+ */
 function assignRequest(
   request: NetworkRequest,
   state: SimulationState,
   options: SimulationOptions,
-  now: number
+  now: number,
+  preselectedServer?: Server
 ): SimulationState {
   const selectedServer =
+    preselectedServer ??
     chooseServer(
       request,
       state,
@@ -253,7 +268,9 @@ function assignRequest(
     );
 
   /**
-   * Paper Algorithm 1 updates load first.
+   * Paper Algorithm 1:
+   *
+   * Li = Li + request size
    */
   const serverAfterAssignment =
     updateServerAfterAssignment(
@@ -261,9 +278,6 @@ function assignRequest(
       request.requestSize
     );
 
-  /**
-   * Current request is about to leave the queue.
-   */
   const queueLengthAfterAssignment =
     Math.max(
       state.requestQueue.length - 1,
@@ -271,8 +285,8 @@ function assignRequest(
     );
 
   /**
-   * Response time is calculated using the
-   * UPDATED server load.
+   * Calculate response time using the
+   * updated server load.
    */
   const responseTime =
     calculateDynamicResponseTime(
@@ -283,8 +297,8 @@ function assignRequest(
     );
 
   /**
-   * Converts simulated response-time units
-   * into a visible processing duration.
+   * Converts simulated response time into
+   * a visible processing duration.
    */
   const processingTimeMs =
     responseTime * 100;
@@ -344,6 +358,13 @@ function assignRequest(
   };
 }
 
+/**
+ * PBLB:
+ *
+ * 1. Select highest-priority request.
+ * 2. Select server.
+ * 3. Assign that request to the selected server.
+ */
 function processPBLB(
   state: SimulationState,
   options: SimulationOptions,
@@ -359,17 +380,12 @@ function processPBLB(
     return state;
   }
 
-  /**
-   * runPBLBSelection chooses the request.
-   *
-   * assignRequest performs the actual
-   * dynamic assignment and state update.
-   */
   return assignRequest(
     selection.request,
     state,
     options,
-    now
+    now,
+    selection.server
   );
 }
 
@@ -379,8 +395,7 @@ export function processSimulationTick(
   now = Date.now()
 ): SimulationState {
   /**
-   * 1. Complete requests whose processing
-   *    time has expired.
+   * 1. Complete finished requests.
    */
   let state =
     completeFinishedRequests(
@@ -389,8 +404,8 @@ export function processSimulationTick(
     );
 
   /**
-   * 2. Refresh response times after loads
-   *    may have decreased.
+   * 2. Update response times after any
+   * completed requests reduced server load.
    */
   state =
     refreshServerResponseTimes(
@@ -398,8 +413,7 @@ export function processSimulationTick(
     );
 
   /**
-   * 3. If there are queued requests,
-   *    process one during this tick.
+   * 3. Process one queued request.
    */
   if (
     state.requestQueue.length > 0
@@ -426,9 +440,8 @@ export function processSimulationTick(
   }
 
   /**
-   * 4. Recalculate response times again
-   *    because assignment may have
-   *    increased server load.
+   * 4. Assignment may have changed load,
+   * so refresh response times again.
    */
   state =
     refreshServerResponseTimes(
@@ -436,10 +449,11 @@ export function processSimulationTick(
     );
 
   /**
-   * 5. Update simulation metrics.
+   * 5. Recalculate metrics.
    */
   return {
     ...state,
+
     metrics:
       calculateMetrics(state),
   };
