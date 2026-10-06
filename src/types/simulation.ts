@@ -19,6 +19,8 @@ export interface SimulationState {
 
   requestQueue: NetworkRequest[];
 
+  activeRequests: NetworkRequest[];
+
   completedRequests: NetworkRequest[];
 
   metrics: SimulationMetrics;
