@@ -1,4 +1,5 @@
 import type {
+  HybridDecisionSnapshot,
   NetworkRequest,
   Server,
   SimulationMetrics,
@@ -23,6 +24,13 @@ import {
 export interface SimulationOptions {
   alpha: number;
   highPriorityThreshold: number;
+}
+
+interface ServerSelectionDecision {
+  server: Server;
+
+  hybridDecision?:
+    HybridDecisionSnapshot;
 }
 
 function calculateMetrics(
@@ -62,7 +70,8 @@ function calculateMetrics(
       ? 0
       : state.servers.reduce(
           (sum, server) =>
-            sum + server.currentLoad,
+            sum +
+            server.currentLoad,
           0
         ) / state.servers.length;
 
@@ -86,15 +95,28 @@ function calculateMetrics(
   };
 }
 
+/*
+ * Performs the server-selection step and
+ * also preserves Hybrid evaluation details.
+ */
 function chooseServer(
   request: NetworkRequest,
   state: SimulationState,
   options: SimulationOptions
-): Server | null {
+): ServerSelectionDecision | null {
   if (state.algorithm === "frlb") {
-    return selectFRLBServer(
-      state.servers
-    );
+    const server =
+      selectFRLBServer(
+        state.servers
+      );
+
+    if (!server) {
+      return null;
+    }
+
+    return {
+      server,
+    };
   }
 
   if (state.algorithm === "hybrid") {
@@ -103,13 +125,59 @@ function chooseServer(
         request,
         state.servers,
         {
-          alpha: options.alpha,
+          alpha:
+            options.alpha,
+
           highPriorityThreshold:
             options.highPriorityThreshold,
         }
       );
 
-    return result?.server ?? null;
+    if (!result) {
+      return null;
+    }
+
+    return {
+      server:
+        result.server,
+
+      hybridDecision: {
+        alpha:
+          options.alpha,
+
+        highPriorityThreshold:
+          options.highPriorityThreshold,
+
+        selectedServerId:
+          result.server.id,
+
+        evaluations:
+          result.evaluation.map(
+            (evaluation) => ({
+              serverId:
+                evaluation.serverId,
+
+              serverName:
+                evaluation.serverName,
+
+              rFast:
+                evaluation.rFast,
+
+              rBal:
+                evaluation.rBal,
+
+              score:
+                evaluation.score,
+
+              currentLoad:
+                evaluation.currentLoad,
+
+              responseTime:
+                evaluation.responseTime,
+            })
+          ),
+      },
+    };
   }
 
   return null;
@@ -123,36 +191,43 @@ function refreshServerResponseTimes(
   state: SimulationState
 ): SimulationState {
   const servers =
-    state.servers.map((server) => {
-      const serverRequests =
-        state.activeRequests.filter(
-          (request) =>
-            request.assignedServerId ===
-            server.id
-        );
+    state.servers.map(
+      (server) => {
+        const serverRequests =
+          state.activeRequests.filter(
+            (request) =>
+              request.assignedServerId ===
+              server.id
+          );
 
-      const averageComplexity =
-        serverRequests.length === 0
-          ? 1
-          : serverRequests.reduce(
-              (sum, request) =>
-                sum + request.complexity,
-              0
-            ) / serverRequests.length;
+        const averageComplexity =
+          serverRequests.length === 0
+            ? 1
+            : serverRequests.reduce(
+                (
+                  sum,
+                  request
+                ) =>
+                  sum +
+                  request.complexity,
+                0
+              ) /
+              serverRequests.length;
 
-      const responseTime =
-        calculateDynamicResponseTime(
-          server,
-          averageComplexity,
-          state.requestQueue.length,
-          serverRequests.length
-        );
+        const responseTime =
+          calculateDynamicResponseTime(
+            server,
+            averageComplexity,
+            state.requestQueue.length,
+            serverRequests.length
+          );
 
-      return {
-        ...server,
-        responseTime,
-      };
-    });
+        return {
+          ...server,
+          responseTime,
+        };
+      }
+    );
 
   return {
     ...state,
@@ -173,10 +248,14 @@ function completeFinishedRequests(
       (request) =>
         request.completionTime !==
           undefined &&
-        request.completionTime <= now
+        request.completionTime <=
+          now
     );
 
-  if (finishedRequests.length === 0) {
+  if (
+    finishedRequests.length ===
+    0
+  ) {
     return state;
   }
 
@@ -184,13 +263,14 @@ function completeFinishedRequests(
     ...state.servers,
   ];
 
-  const completedRequests: NetworkRequest[] =
-    [
+  const completedRequests:
+    NetworkRequest[] = [
       ...state.completedRequests,
     ];
 
   for (
-    const request of finishedRequests
+    const request of
+      finishedRequests
   ) {
     if (
       request.assignedServerId ===
@@ -199,16 +279,17 @@ function completeFinishedRequests(
       continue;
     }
 
-    servers = servers.map(
-      (server) =>
-        server.id ===
-        request.assignedServerId
-          ? updateServerAfterCompletion(
-              server,
-              request.requestSize
-            )
-          : server
-    );
+    servers =
+      servers.map(
+        (server) =>
+          server.id ===
+          request.assignedServerId
+            ? updateServerAfterCompletion(
+                server,
+                request.requestSize
+              )
+            : server
+      );
 
     completedRequests.push({
       ...request,
@@ -221,7 +302,8 @@ function completeFinishedRequests(
       (request) =>
         request.completionTime ===
           undefined ||
-        request.completionTime > now
+        request.completionTime >
+          now
     );
 
   return {
@@ -248,16 +330,33 @@ function assignRequest(
   now: number,
   preselectedServer?: Server
 ): SimulationState {
-  const selectedServer =
-    preselectedServer ??
-    chooseServer(
-      request,
-      state,
-      options
-    );
+  let selectedServer:
+    Server | null = null;
 
-  if (!selectedServer) {
-    return state;
+  let hybridDecision:
+    HybridDecisionSnapshot |
+    undefined;
+
+  if (preselectedServer) {
+    selectedServer =
+      preselectedServer;
+  } else {
+    const selection =
+      chooseServer(
+        request,
+        state,
+        options
+      );
+
+    if (!selection) {
+      return state;
+    }
+
+    selectedServer =
+      selection.server;
+
+    hybridDecision =
+      selection.hybridDecision;
   }
 
   const waitingTimeMs =
@@ -280,7 +379,8 @@ function assignRequest(
 
   const queueLengthAfterAssignment =
     Math.max(
-      state.requestQueue.length - 1,
+      state.requestQueue.length -
+        1,
       0
     );
 
@@ -293,7 +393,8 @@ function assignRequest(
       serverAfterAssignment,
       request.complexity,
       queueLengthAfterAssignment,
-      serverAfterAssignment.activeRequests
+      serverAfterAssignment
+        .activeRequests
     );
 
   /**
@@ -306,26 +407,30 @@ function assignRequest(
   const completionTime =
     now + processingTimeMs;
 
-  const updatedRequest: NetworkRequest = {
-    ...request,
+  const updatedRequest:
+    NetworkRequest = {
+      ...request,
 
-    status: "processing",
+      status: "processing",
 
-    assignedServerId:
-      selectedServer.id,
+      assignedServerId:
+        selectedServer.id,
 
-    processingStartTime: now,
+      processingStartTime:
+        now,
 
-    waitingTimeMs,
+      waitingTimeMs,
 
-    processingTimeMs,
-
-    completionTime,
-
-    totalResponseTimeMs:
-      waitingTimeMs +
       processingTimeMs,
-  };
+
+      completionTime,
+
+      totalResponseTimeMs:
+        waitingTimeMs +
+        processingTimeMs,
+
+      hybridDecision,
+    };
 
   const servers =
     state.servers.map(
@@ -416,26 +521,30 @@ export function processSimulationTick(
    * 3. Process one queued request.
    */
   if (
-    state.requestQueue.length > 0
+    state.requestQueue.length >
+    0
   ) {
     if (
-      state.algorithm === "pblb"
+      state.algorithm ===
+      "pblb"
     ) {
-      state = processPBLB(
-        state,
-        options,
-        now
-      );
+      state =
+        processPBLB(
+          state,
+          options,
+          now
+        );
     } else {
       const request =
         state.requestQueue[0];
 
-      state = assignRequest(
-        request,
-        state,
-        options,
-        now
-      );
+      state =
+        assignRequest(
+          request,
+          state,
+          options,
+          now
+        );
     }
   }
 
@@ -455,6 +564,8 @@ export function processSimulationTick(
     ...state,
 
     metrics:
-      calculateMetrics(state),
+      calculateMetrics(
+        state
+      ),
   };
 }

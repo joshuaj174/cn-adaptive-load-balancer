@@ -1,4 +1,9 @@
-export type RequestPriority = 1 | 2 | 3 | 4 | 5;
+export type RequestPriority =
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5;
 
 export type RequestStatus =
   | "created"
@@ -9,6 +14,33 @@ export type RequestStatus =
   | "processing"
   | "completed"
   | "failed";
+
+export interface HybridServerEvaluationSnapshot {
+  serverId: number;
+
+  serverName: string;
+
+  rFast: number;
+
+  rBal: number;
+
+  score: number;
+
+  currentLoad: number;
+
+  responseTime: number;
+}
+
+export interface HybridDecisionSnapshot {
+  alpha: number;
+
+  highPriorityThreshold: number;
+
+  selectedServerId: number;
+
+  evaluations:
+    HybridServerEvaluationSnapshot[];
+}
 
 export interface NetworkRequest {
   id: string;
@@ -39,4 +71,13 @@ export interface NetworkRequest {
   processingTimeMs?: number;
 
   totalResponseTimeMs?: number;
+
+  /*
+   * Stored only when the Hybrid algorithm
+   * performs the server-selection step.
+   *
+   * This preserves the exact scores that
+   * existed at assignment time.
+   */
+  hybridDecision?: HybridDecisionSnapshot;
 }

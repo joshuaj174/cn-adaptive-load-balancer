@@ -43,7 +43,7 @@ interface ServerHistoryPoint {
   response5: number;
 }
 
-const MAX_HISTORY_POINTS = 60;
+const MAX_HISTORY_POINTS = 120;
 
 export default function LiveCharts({
   servers,
@@ -58,7 +58,8 @@ export default function LiveCharts({
    * the interval without recreating the interval
    * every time server data changes.
    */
-  const serversRef = useRef<Server[]>(servers);
+  const serversRef =
+    useRef<Server[]>(servers);
 
   /*
    * null means that a simulation run has not
@@ -91,7 +92,9 @@ export default function LiveCharts({
       }, 0);
 
     return () => {
-      window.clearTimeout(resetTimer);
+      window.clearTimeout(
+        resetTimer
+      );
     };
   }, [resetKey]);
 
@@ -109,15 +112,20 @@ export default function LiveCharts({
      * simulation begins for the first time
      * after a reset.
      */
-    if (startTimeRef.current === null) {
-      startTimeRef.current = Date.now();
+    if (
+      startTimeRef.current === null
+    ) {
+      startTimeRef.current =
+        Date.now();
     }
 
     const captureSnapshot = () => {
       const currentServers =
         serversRef.current;
 
-      if (currentServers.length < 5) {
+      if (
+        currentServers.length < 5
+      ) {
         return;
       }
 
@@ -129,70 +137,90 @@ export default function LiveCharts({
       }
 
       const elapsedSeconds =
-        (Date.now() - startTime) / 1000;
+        (Date.now() -
+          startTime) /
+        1000;
 
-      const point: ServerHistoryPoint = {
-        time: Number(
-          elapsedSeconds.toFixed(1)
-        ),
+      const point: ServerHistoryPoint =
+        {
+          time: Number(
+            elapsedSeconds.toFixed(
+              1
+            )
+          ),
 
-        load1:
-          currentServers[0].currentLoad,
+          load1:
+            currentServers[0]
+              .currentLoad,
 
-        load2:
-          currentServers[1].currentLoad,
+          load2:
+            currentServers[1]
+              .currentLoad,
 
-        load3:
-          currentServers[2].currentLoad,
+          load3:
+            currentServers[2]
+              .currentLoad,
 
-        load4:
-          currentServers[3].currentLoad,
+          load4:
+            currentServers[3]
+              .currentLoad,
 
-        load5:
-          currentServers[4].currentLoad,
+          load5:
+            currentServers[4]
+              .currentLoad,
 
-        response1:
-          currentServers[0].responseTime,
+          response1:
+            currentServers[0]
+              .responseTime,
 
-        response2:
-          currentServers[1].responseTime,
+          response2:
+            currentServers[1]
+              .responseTime,
 
-        response3:
-          currentServers[2].responseTime,
+          response3:
+            currentServers[2]
+              .responseTime,
 
-        response4:
-          currentServers[3].responseTime,
+          response4:
+            currentServers[3]
+              .responseTime,
 
-        response5:
-          currentServers[4].responseTime,
-      };
+          response5:
+            currentServers[4]
+              .responseTime,
+        };
 
-      setHistory((currentHistory) => {
-        const updatedHistory = [
-          ...currentHistory,
-          point,
-        ];
+      setHistory(
+        (currentHistory) => {
+          const updatedHistory =
+            [
+              ...currentHistory,
+              point,
+            ];
 
-        return updatedHistory.slice(
-          -MAX_HISTORY_POINTS
-        );
-      });
+          return updatedHistory.slice(
+            -MAX_HISTORY_POINTS
+          );
+        }
+      );
     };
 
     /*
      * Capture immediately so the chart does not
-     * wait half a second before showing data.
+     * wait before showing data.
      */
     captureSnapshot();
 
     const timer =
       window.setInterval(
         captureSnapshot,
-        500
+        250
       );
 
     return () => {
-      window.clearInterval(timer);
+      window.clearInterval(
+        timer
+      );
     };
   }, [isRunning]);
 
@@ -250,7 +278,9 @@ export default function LiveCharts({
                   <XAxis
                     dataKey="time"
                     stroke="#94a3b8"
-                    tickFormatter={(value) =>
+                    tickFormatter={(
+                      value
+                    ) =>
                       `${value}s`
                     }
                   />
@@ -266,9 +296,12 @@ export default function LiveCharts({
                         "#0f172a",
                       border:
                         "1px solid #334155",
-                      borderRadius: "8px",
+                      borderRadius:
+                        "8px",
                     }}
-                    labelFormatter={(value) =>
+                    labelFormatter={(
+                      value
+                    ) =>
                       `${value} seconds`
                     }
                   />
@@ -359,7 +392,9 @@ export default function LiveCharts({
                   <XAxis
                     dataKey="time"
                     stroke="#94a3b8"
-                    tickFormatter={(value) =>
+                    tickFormatter={(
+                      value
+                    ) =>
                       `${value}s`
                     }
                   />
@@ -375,9 +410,12 @@ export default function LiveCharts({
                         "#0f172a",
                       border:
                         "1px solid #334155",
-                      borderRadius: "8px",
+                      borderRadius:
+                        "8px",
                     }}
-                    labelFormatter={(value) =>
+                    labelFormatter={(
+                      value
+                    ) =>
                       `${value} seconds`
                     }
                   />
@@ -436,7 +474,8 @@ export default function LiveCharts({
 
         <div>
           <h3 className="mb-3 font-semibold">
-            Completed Requests by Server
+            Completed Requests by
+            Server
           </h3>
 
           <div className="h-80 w-full rounded-lg bg-slate-950 p-3">
@@ -476,7 +515,8 @@ export default function LiveCharts({
                       "#0f172a",
                     border:
                       "1px solid #334155",
-                    borderRadius: "8px",
+                    borderRadius:
+                      "8px",
                   }}
                 />
 
