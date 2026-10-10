@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   useEffect,
   useRef,
@@ -287,25 +289,43 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 p-6 text-white">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold">
-            Adaptive Hybrid Load
-            Balancing Simulator
-          </h1>
 
-          <p className="mt-2 text-slate-400">
-            FRLB, PBLB and Hybrid
-            FRLB-PBLB simulation
-          </p>
+        {/* HEADER */}
+        <header className="mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">
+                Adaptive Hybrid Load
+                Balancing Simulator
+              </h1>
+
+              <p className="mt-2 text-slate-400">
+                FRLB, PBLB and Hybrid
+                FRLB-PBLB simulation
+              </p>
+            </div>
+
+            <Link
+              href="/compare"
+              className="rounded-lg bg-violet-600 px-5 py-3 font-semibold text-white transition hover:bg-violet-500"
+            >
+              Compare Algorithms
+            </Link>
+          </div>
         </header>
 
+        {/* CONTROLS + SERVERS */}
         <div className="grid gap-6 lg:grid-cols-3">
+
+          {/* SIMULATION CONTROLS */}
           <section className="rounded-xl bg-slate-900 p-6">
             <h2 className="mb-5 text-xl font-semibold">
               Simulation Controls
             </h2>
 
             <div className="space-y-4">
+
+              {/* ALGORITHM */}
               <div>
                 <label className="mb-1 block text-sm">
                   Algorithm
@@ -338,6 +358,7 @@ export default function Home() {
                 </select>
               </div>
 
+              {/* TRAFFIC RATE */}
               <div>
                 <label className="mb-1 block text-sm">
                   Auto Traffic Rate
@@ -377,8 +398,10 @@ export default function Home() {
                 </select>
               </div>
 
+              {/* START / STOP */}
               {!autoTrafficRunning ? (
                 <button
+                  type="button"
                   onClick={
                     handleStartAutoTraffic
                   }
@@ -388,6 +411,7 @@ export default function Home() {
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={
                     handleStopAutoTraffic
                   }
@@ -397,12 +421,15 @@ export default function Home() {
                 </button>
               )}
 
+              {/* MANUAL REQUEST */}
               <div className="border-t border-slate-700 pt-5">
                 <h3 className="mb-4 font-semibold">
                   Manual Request
                 </h3>
 
                 <div className="space-y-4">
+
+                  {/* PRIORITY */}
                   <div>
                     <label className="mb-1 block text-sm">
                       Priority:{" "}
@@ -421,8 +448,7 @@ export default function Home() {
                       ) =>
                         setPriority(
                           Number(
-                            event
-                              .target
+                            event.target
                               .value
                           ) as RequestPriority
                         )
@@ -431,6 +457,7 @@ export default function Home() {
                     />
                   </div>
 
+                  {/* REQUEST SIZE */}
                   <div>
                     <label className="mb-1 block text-sm">
                       Request Size:{" "}
@@ -449,8 +476,7 @@ export default function Home() {
                       ) =>
                         setRequestSize(
                           Number(
-                            event
-                              .target
+                            event.target
                               .value
                           )
                         )
@@ -459,6 +485,7 @@ export default function Home() {
                     />
                   </div>
 
+                  {/* COMPLEXITY */}
                   <div>
                     <label className="mb-1 block text-sm">
                       Complexity:{" "}
@@ -477,8 +504,7 @@ export default function Home() {
                       ) =>
                         setComplexity(
                           Number(
-                            event
-                              .target
+                            event.target
                               .value
                           )
                         )
@@ -488,6 +514,7 @@ export default function Home() {
                   </div>
 
                   <button
+                    type="button"
                     onClick={
                       handleSendRequest
                     }
@@ -496,13 +523,13 @@ export default function Home() {
                     }
                     className="w-full rounded bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Send Manual
-                    Request
+                    Send Manual Request
                   </button>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={handleReset}
                 className="w-full rounded bg-slate-700 px-4 py-2 hover:bg-slate-600"
               >
@@ -511,6 +538,7 @@ export default function Home() {
             </div>
           </section>
 
+          {/* LIVE SERVERS */}
           <section className="rounded-xl bg-slate-900 p-6 lg:col-span-2">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">
@@ -586,8 +614,7 @@ export default function Home() {
                         </p>
 
                         <p>
-                          Response
-                          Time:{" "}
+                          Response Time:{" "}
                           {server.responseTime.toFixed(
                             2
                           )}{" "}
@@ -603,16 +630,14 @@ export default function Home() {
                         </p>
 
                         <p>
-                          Active
-                          Requests:{" "}
+                          Active Requests:{" "}
                           {
                             server.activeRequests
                           }
                         </p>
 
                         <p>
-                          Completed
-                          Requests:{" "}
+                          Completed Requests:{" "}
                           {
                             server.completedRequests
                           }
@@ -633,6 +658,7 @@ export default function Home() {
           </section>
         </div>
 
+        {/* LIVE METRICS */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl bg-slate-900 p-4">
             <p className="text-sm text-slate-400">
@@ -703,6 +729,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* LATEST REQUEST */}
         <section className="mt-6 rounded-xl bg-slate-900 p-6">
           <h2 className="mb-4 text-xl font-semibold">
             Latest Request
@@ -715,6 +742,7 @@ export default function Home() {
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
               <div>
                 <p className="text-xs text-slate-400">
                   Request
@@ -803,8 +831,7 @@ export default function Home() {
 
               <div>
                 <p className="text-xs text-slate-400">
-                  Total Response
-                  Time
+                  Total Response Time
                 </p>
 
                 <p>
@@ -819,6 +846,7 @@ export default function Home() {
           )}
         </section>
 
+        {/* LIVE CHARTS */}
         <LiveCharts
           servers={
             simulationState.servers
