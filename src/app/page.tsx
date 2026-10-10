@@ -16,7 +16,10 @@ import type {
 } from "@/types";
 
 import LiveCharts from "@/components/LiveCharts";
+
 import NetworkTopology from "@/components/NetworkTopology";
+
+import HybridScorePanel from "@/components/HybridScorePanel";
 
 import {
   initialServers,
@@ -29,6 +32,8 @@ import {
 import {
   processSimulationTick,
 } from "@/simulation/simulator";
+
+const HIGH_PRIORITY_THRESHOLD = 4;
 
 const createInitialState =
   (): SimulationState => ({
@@ -73,6 +78,11 @@ export default function Home() {
     useState<LoadBalancingAlgorithm>(
       "hybrid"
     );
+
+  const [
+    alpha,
+    setAlpha,
+  ] = useState(0.5);
 
   const [
     priority,
@@ -123,8 +133,9 @@ export default function Home() {
           processSimulationTick(
             currentState,
             {
-              alpha: 0.5,
-              highPriorityThreshold: 4,
+              alpha,
+              highPriorityThreshold:
+                HIGH_PRIORITY_THRESHOLD,
             },
             Date.now()
           )
@@ -133,7 +144,7 @@ export default function Home() {
 
     return () =>
       clearInterval(timer);
-  }, []);
+  }, [alpha]);
 
   /*
    * Automatic traffic generator.
@@ -290,7 +301,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 p-6 text-white">
       <div className="mx-auto max-w-7xl">
-
         {/* HEADER */}
         <header className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -317,7 +327,6 @@ export default function Home() {
 
         {/* CONTROLS + SERVERS */}
         <div className="grid gap-6 lg:grid-cols-3">
-
           {/* SIMULATION CONTROLS */}
           <section className="rounded-xl bg-slate-900 p-6">
             <h2 className="mb-5 text-xl font-semibold">
@@ -325,7 +334,6 @@ export default function Home() {
             </h2>
 
             <div className="space-y-4">
-
               {/* ALGORITHM */}
               <div>
                 <label className="mb-1 block text-sm">
@@ -358,6 +366,59 @@ export default function Home() {
                   </option>
                 </select>
               </div>
+
+              {/* ALPHA CONTROL */}
+              {algorithm ===
+                "hybrid" && (
+                <div className="rounded-lg border border-violet-900 bg-violet-950/20 p-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold">
+                      Hybrid Alpha
+                    </label>
+
+                    <span className="rounded bg-violet-900 px-2 py-1 text-sm font-semibold text-violet-200">
+                      {alpha.toFixed(2)}
+                    </span>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={alpha}
+                    onChange={(
+                      event
+                    ) =>
+                      setAlpha(
+                        Number(
+                          event.target
+                            .value
+                        )
+                      )
+                    }
+                    disabled={
+                      autoTrafficRunning
+                    }
+                    className="mt-3 w-full"
+                  />
+
+                  <div className="mt-2 flex justify-between text-xs text-slate-400">
+                    <span>
+                      0 = Load focus
+                    </span>
+
+                    <span>
+                      1 = Response focus
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-xs leading-5 text-slate-400">
+                    Score = α × R_fast +
+                    (1 - α) × R_bal
+                  </p>
+                </div>
+              )}
 
               {/* TRAFFIC RATE */}
               <div>
@@ -429,7 +490,6 @@ export default function Home() {
                 </h3>
 
                 <div className="space-y-4">
-
                   {/* PRIORITY */}
                   <div>
                     <label className="mb-1 block text-sm">
@@ -743,7 +803,6 @@ export default function Home() {
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
               <div>
                 <p className="text-xs text-slate-400">
                   Request
@@ -846,7 +905,23 @@ export default function Home() {
             </div>
           )}
         </section>
-         <NetworkTopology
+
+        {/* HYBRID TRANSPARENCY */}
+        {algorithm === "hybrid" && (
+          <HybridScorePanel
+            request={lastRequest}
+            servers={
+              simulationState.servers
+            }
+            alpha={alpha}
+            highPriorityThreshold={
+              HIGH_PRIORITY_THRESHOLD
+            }
+          />
+        )}
+
+        {/* NETWORK TOPOLOGY */}
+        <NetworkTopology
           selectedServerId={
             lastRequest?.assignedServerId
           }
@@ -854,9 +929,9 @@ export default function Home() {
             lastRequest?.status
           }
         />
+
         {/* LIVE CHARTS */}
         <LiveCharts
-        
           servers={
             simulationState.servers
           }
