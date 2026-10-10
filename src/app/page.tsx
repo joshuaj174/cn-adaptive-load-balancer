@@ -16,6 +16,7 @@ import type {
 } from "@/types";
 
 import LiveCharts from "@/components/LiveCharts";
+import NetworkTopology from "@/components/NetworkTopology";
 
 import {
   initialServers,
@@ -845,9 +846,17 @@ export default function Home() {
             </div>
           )}
         </section>
-
+         <NetworkTopology
+          selectedServerId={
+            lastRequest?.assignedServerId
+          }
+          requestStatus={
+            lastRequest?.status
+          }
+        />
         {/* LIVE CHARTS */}
         <LiveCharts
+        
           servers={
             simulationState.servers
           }
