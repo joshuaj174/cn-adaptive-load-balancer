@@ -21,6 +21,76 @@ import { processSimulationTick } from "@/simulation/simulator";
 
 const HIGH_PRIORITY_THRESHOLD = 4;
 
+type ScenarioId =
+  | "custom"
+  | "balanced"
+  | "response-focus"
+  | "priority-traffic"
+  | "high-load";
+
+interface SimulationScenario {
+  id: ScenarioId;
+  name: string;
+  description: string;
+  algorithm: LoadBalancingAlgorithm;
+  alpha: number;
+  requestsPerSecond: number;
+  priority: RequestPriority;
+  requestSize: number;
+  complexity: number;
+}
+
+const simulationScenarios: SimulationScenario[] = [
+  {
+    id: "balanced",
+    name: "Balanced Hybrid",
+    description:
+      "Moderate traffic using Hybrid FRLB-PBLB with equal response-time and load-balancing importance.",
+    algorithm: "hybrid",
+    alpha: 0.5,
+    requestsPerSecond: 5,
+    priority: 3,
+    requestSize: 5,
+    complexity: 5,
+  },
+  {
+    id: "response-focus",
+    name: "Response-Time Focus",
+    description:
+      "Hybrid routing gives more importance to server response time by using a higher alpha value.",
+    algorithm: "hybrid",
+    alpha: 0.8,
+    requestsPerSecond: 5,
+    priority: 3,
+    requestSize: 5,
+    complexity: 6,
+  },
+  {
+    id: "priority-traffic",
+    name: "Priority Traffic",
+    description:
+      "PBLB mode with high-priority requests to demonstrate priority-based request selection.",
+    algorithm: "pblb",
+    alpha: 0.5,
+    requestsPerSecond: 10,
+    priority: 5,
+    requestSize: 6,
+    complexity: 7,
+  },
+  {
+    id: "high-load",
+    name: "High Load",
+    description:
+      "Maximum automatic traffic rate with larger and more complex requests to increase server load.",
+    algorithm: "hybrid",
+    alpha: 0.5,
+    requestsPerSecond: 10,
+    priority: 4,
+    requestSize: 9,
+    complexity: 9,
+  },
+];
+
 const createInitialState = (): SimulationState => ({
   algorithm: "hybrid",
 
@@ -56,33 +126,26 @@ export default function Home() {
   const [priority, setPriority] =
     useState<RequestPriority>(5);
 
-  const [requestSize, setRequestSize] =
-    useState(5);
+  const [requestSize, setRequestSize] = useState(5);
 
-  const [complexity, setComplexity] =
-    useState(5);
+  const [complexity, setComplexity] = useState(5);
 
   const [lastRequestId, setLastRequestId] =
     useState<string | null>(null);
 
-  const [
-    autoTrafficRunning,
-    setAutoTrafficRunning,
-  ] = useState(false);
+  const [autoTrafficRunning, setAutoTrafficRunning] =
+    useState(false);
 
-  const [
-    requestsPerSecond,
-    setRequestsPerSecond,
-  ] = useState(5);
+  const [requestsPerSecond, setRequestsPerSecond] =
+    useState(5);
 
-  const [chartResetKey, setChartResetKey] =
-    useState(0);
+  const [chartResetKey, setChartResetKey] = useState(0);
+
+  const [selectedScenario, setSelectedScenario] =
+    useState<ScenarioId>("custom");
 
   const requestCounter = useRef(1);
 
-  /*
-   * Main simulation engine.
-   */
   useEffect(() => {
     const timer = setInterval(() => {
       setSimulationState((currentState) =>
@@ -101,51 +164,37 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [alpha]);
 
-  /*
-   * Automatic traffic generator.
-   */
   useEffect(() => {
     if (!autoTrafficRunning) {
       return;
     }
 
-    const intervalMs =
-      1000 / requestsPerSecond;
+    const intervalMs = 1000 / requestsPerSecond;
 
     const trafficTimer = setInterval(() => {
-      const generatedRequest =
-        generateRequest();
+      const generatedRequest = generateRequest();
 
       const request: NetworkRequest = {
         ...generatedRequest,
-
         id: `AUTO-${requestCounter.current++}`,
-
         status: "queued",
-
         queueEntryTime: Date.now(),
       };
 
       setLastRequestId(request.id);
 
-      setSimulationState(
-        (currentState) => ({
-          ...currentState,
-
-          algorithm,
-
-          requestQueue: [
-            ...currentState.requestQueue,
-            request,
-          ],
-
-          isRunning: true,
-        })
-      );
+      setSimulationState((currentState) => ({
+        ...currentState,
+        algorithm,
+        requestQueue: [
+          ...currentState.requestQueue,
+          request,
+        ],
+        isRunning: true,
+      }));
     }, intervalMs);
 
-    return () =>
-      clearInterval(trafficTimer);
+    return () => clearInterval(trafficTimer);
   }, [
     autoTrafficRunning,
     requestsPerSecond,
@@ -154,95 +203,163 @@ export default function Home() {
 
   const lastRequest =
     simulationState.activeRequests.find(
-      (request) =>
-        request.id === lastRequestId
+      (request) => request.id === lastRequestId
     ) ??
     simulationState.completedRequests.find(
-      (request) =>
-        request.id === lastRequestId
+      (request) => request.id === lastRequestId
     ) ??
     simulationState.requestQueue.find(
-      (request) =>
-        request.id === lastRequestId
+      (request) => request.id === lastRequestId
     ) ??
     null;
+
+  const activeScenario =
+    selectedScenario === "custom"
+      ? null
+      : simulationScenarios.find(
+          (scenario) =>
+            scenario.id === selectedScenario
+        ) ?? null;
+
+  function handleScenarioChange(
+    scenarioId: ScenarioId
+  ) {
+    setSelectedScenario(scenarioId);
+
+    if (scenarioId === "custom") {
+      return;
+    }
+
+    const scenario = simulationScenarios.find(
+      (item) => item.id === scenarioId
+    );
+
+    if (!scenario) {
+      return;
+    }
+
+    setAlgorithm(scenario.algorithm);
+    setAlpha(scenario.alpha);
+    setRequestsPerSecond(
+      scenario.requestsPerSecond
+    );
+    setPriority(scenario.priority);
+    setRequestSize(scenario.requestSize);
+    setComplexity(scenario.complexity);
+
+    setSimulationState((currentState) => ({
+      ...currentState,
+      algorithm: scenario.algorithm,
+    }));
+  }
+
+  function handleAlgorithmChange(
+    value: LoadBalancingAlgorithm
+  ) {
+    setAlgorithm(value);
+    setSelectedScenario("custom");
+
+    setSimulationState((currentState) => ({
+      ...currentState,
+      algorithm: value,
+    }));
+  }
+
+  function handleAlphaChange(value: number) {
+    setAlpha(value);
+    setSelectedScenario("custom");
+  }
+
+  function handleTrafficRateChange(
+    value: number
+  ) {
+    setRequestsPerSecond(value);
+    setSelectedScenario("custom");
+  }
+
+  function handlePriorityChange(
+    value: RequestPriority
+  ) {
+    setPriority(value);
+    setSelectedScenario("custom");
+  }
+
+  function handleRequestSizeChange(
+    value: number
+  ) {
+    setRequestSize(value);
+    setSelectedScenario("custom");
+  }
+
+  function handleComplexityChange(
+    value: number
+  ) {
+    setComplexity(value);
+    setSelectedScenario("custom");
+  }
 
   function handleSendRequest() {
     const now = Date.now();
 
     const request: NetworkRequest = {
       id: `MANUAL-${requestCounter.current++}`,
-
       priority,
-
       requestSize,
-
       complexity,
-
       status: "queued",
-
       arrivalTime: now,
-
       queueEntryTime: now,
     };
 
     setLastRequestId(request.id);
 
-    setSimulationState(
-      (currentState) => ({
-        ...currentState,
-
-        algorithm,
-
-        requestQueue: [
-          ...currentState.requestQueue,
-          request,
-        ],
-      })
-    );
+    setSimulationState((currentState) => ({
+      ...currentState,
+      algorithm,
+      requestQueue: [
+        ...currentState.requestQueue,
+        request,
+      ],
+    }));
   }
 
   function handleStartAutoTraffic() {
     setAutoTrafficRunning(true);
 
-    setSimulationState(
-      (currentState) => ({
-        ...currentState,
-
-        algorithm,
-
-        isRunning: true,
-      })
-    );
+    setSimulationState((currentState) => ({
+      ...currentState,
+      algorithm,
+      isRunning: true,
+    }));
   }
 
   function handleStopAutoTraffic() {
     setAutoTrafficRunning(false);
 
-    setSimulationState(
-      (currentState) => ({
-        ...currentState,
-
-        isRunning: false,
-      })
-    );
+    setSimulationState((currentState) => ({
+      ...currentState,
+      isRunning: false,
+    }));
   }
 
   function handleReset() {
     setAutoTrafficRunning(false);
-
-    setSimulationState(
-      createInitialState()
-    );
-
+    setSimulationState(createInitialState());
     setLastRequestId(null);
 
     requestCounter.current = 1;
 
     setChartResetKey(
-      (currentKey) =>
-        currentKey + 1
+      (currentKey) => currentKey + 1
     );
+
+    setAlgorithm("hybrid");
+    setAlpha(0.5);
+    setPriority(5);
+    setRequestSize(5);
+    setComplexity(5);
+    setRequestsPerSecond(5);
+    setSelectedScenario("custom");
   }
 
   return (
@@ -258,8 +375,8 @@ export default function Home() {
               </h1>
 
               <p className="mt-2 text-slate-400">
-                FRLB, PBLB and Hybrid
-                FRLB-PBLB simulation
+                FRLB, PBLB and Hybrid FRLB-PBLB
+                simulation
               </p>
             </div>
 
@@ -281,6 +398,119 @@ export default function Home() {
           </div>
         </header>
 
+        {/* SIMULATION SCENARIOS */}
+        <section className="mb-6 rounded-xl border border-blue-900 bg-slate-900 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-blue-400">
+                Workload Presets
+              </p>
+
+              <h2 className="mt-1 text-xl font-semibold">
+                Simulation Scenarios
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                Scenarios only configure the
+                workload and simulator controls.
+                They do not change the FRLB,
+                PBLB or Hybrid algorithm logic.
+              </p>
+            </div>
+
+            <div className="w-full sm:w-72">
+              <label className="mb-2 block text-sm text-slate-300">
+                Select Scenario
+              </label>
+
+              <select
+                value={selectedScenario}
+                onChange={(event) =>
+                  handleScenarioChange(
+                    event.target.value as ScenarioId
+                  )
+                }
+                disabled={autoTrafficRunning}
+                className="w-full rounded-lg bg-slate-800 p-3 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="custom">
+                  Custom Configuration
+                </option>
+
+                {simulationScenarios.map(
+                  (scenario) => (
+                    <option
+                      key={scenario.id}
+                      value={scenario.id}
+                    >
+                      {scenario.name}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+          </div>
+
+          {activeScenario && (
+            <div className="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
+              <div className="rounded-lg bg-slate-800 p-5">
+                <h3 className="font-semibold text-blue-300">
+                  {activeScenario.name}
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  {activeScenario.description}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-800 p-5 text-sm">
+                <div>
+                  <p className="text-xs text-slate-500">
+                    Algorithm
+                  </p>
+
+                  <p className="mt-1 font-semibold uppercase">
+                    {activeScenario.algorithm}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-500">
+                    Traffic
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {
+                      activeScenario.requestsPerSecond
+                    }{" "}
+                    req/s
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-500">
+                    Priority
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {activeScenario.priority}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-500">
+                    Complexity
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {activeScenario.complexity}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* CONTROLS + SERVERS */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* SIMULATION CONTROLS */}
@@ -299,14 +529,12 @@ export default function Home() {
                 <select
                   value={algorithm}
                   onChange={(event) =>
-                    setAlgorithm(
+                    handleAlgorithmChange(
                       event.target
                         .value as LoadBalancingAlgorithm
                     )
                   }
-                  disabled={
-                    autoTrafficRunning
-                  }
+                  disabled={autoTrafficRunning}
                   className="w-full rounded bg-slate-800 p-2 disabled:opacity-50"
                 >
                   <option value="frlb">
@@ -323,7 +551,7 @@ export default function Home() {
                 </select>
               </div>
 
-              {/* ALPHA CONTROL */}
+              {/* ALPHA */}
               {algorithm === "hybrid" && (
                 <div className="rounded-lg border border-violet-900 bg-violet-950/20 p-4">
                   <div className="flex items-center justify-between">
@@ -343,15 +571,11 @@ export default function Home() {
                     step="0.05"
                     value={alpha}
                     onChange={(event) =>
-                      setAlpha(
-                        Number(
-                          event.target.value
-                        )
+                      handleAlphaChange(
+                        Number(event.target.value)
                       )
                     }
-                    disabled={
-                      autoTrafficRunning
-                    }
+                    disabled={autoTrafficRunning}
                     className="mt-3 w-full"
                   />
 
@@ -366,8 +590,8 @@ export default function Home() {
                   </div>
 
                   <p className="mt-3 text-xs leading-5 text-slate-400">
-                    Score = α × R_fast + (1 -
-                    α) × R_bal
+                    Score = α × R_fast + (1 - α)
+                    × R_bal
                   </p>
                 </div>
               )}
@@ -379,19 +603,13 @@ export default function Home() {
                 </label>
 
                 <select
-                  value={
-                    requestsPerSecond
-                  }
+                  value={requestsPerSecond}
                   onChange={(event) =>
-                    setRequestsPerSecond(
-                      Number(
-                        event.target.value
-                      )
+                    handleTrafficRateChange(
+                      Number(event.target.value)
                     )
                   }
-                  disabled={
-                    autoTrafficRunning
-                  }
+                  disabled={autoTrafficRunning}
                   className="w-full rounded bg-slate-800 p-2 disabled:opacity-50"
                 >
                   <option value={1}>
@@ -416,9 +634,7 @@ export default function Home() {
               {!autoTrafficRunning ? (
                 <button
                   type="button"
-                  onClick={
-                    handleStartAutoTraffic
-                  }
+                  onClick={handleStartAutoTraffic}
                   className="w-full rounded bg-green-600 px-4 py-2 font-semibold hover:bg-green-500"
                 >
                   Start Auto Traffic
@@ -426,9 +642,7 @@ export default function Home() {
               ) : (
                 <button
                   type="button"
-                  onClick={
-                    handleStopAutoTraffic
-                  }
+                  onClick={handleStopAutoTraffic}
                   className="w-full rounded bg-red-600 px-4 py-2 font-semibold hover:bg-red-500"
                 >
                   Stop Auto Traffic
@@ -444,22 +658,18 @@ export default function Home() {
                 <div className="space-y-4">
                   <div>
                     <label className="mb-1 block text-sm">
-                      Priority:{" "}
-                      {priority}
+                      Priority: {priority}
                     </label>
 
                     <input
                       type="range"
                       min="1"
                       max="5"
-                      value={
-                        priority
-                      }
+                      value={priority}
                       onChange={(event) =>
-                        setPriority(
+                        handlePriorityChange(
                           Number(
-                            event.target
-                              .value
+                            event.target.value
                           ) as RequestPriority
                         )
                       }
@@ -469,23 +679,17 @@ export default function Home() {
 
                   <div>
                     <label className="mb-1 block text-sm">
-                      Request Size:{" "}
-                      {requestSize}
+                      Request Size: {requestSize}
                     </label>
 
                     <input
                       type="range"
                       min="1"
                       max="10"
-                      value={
-                        requestSize
-                      }
+                      value={requestSize}
                       onChange={(event) =>
-                        setRequestSize(
-                          Number(
-                            event.target
-                              .value
-                          )
+                        handleRequestSizeChange(
+                          Number(event.target.value)
                         )
                       }
                       className="w-full"
@@ -494,23 +698,17 @@ export default function Home() {
 
                   <div>
                     <label className="mb-1 block text-sm">
-                      Complexity:{" "}
-                      {complexity}
+                      Complexity: {complexity}
                     </label>
 
                     <input
                       type="range"
                       min="1"
                       max="10"
-                      value={
-                        complexity
-                      }
+                      value={complexity}
                       onChange={(event) =>
-                        setComplexity(
-                          Number(
-                            event.target
-                              .value
-                          )
+                        handleComplexityChange(
+                          Number(event.target.value)
                         )
                       }
                       className="w-full"
@@ -519,12 +717,8 @@ export default function Home() {
 
                   <button
                     type="button"
-                    onClick={
-                      handleSendRequest
-                    }
-                    disabled={
-                      autoTrafficRunning
-                    }
+                    onClick={handleSendRequest}
+                    disabled={autoTrafficRunning}
                     className="w-full rounded bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Send Manual Request
@@ -567,10 +761,9 @@ export default function Home() {
                 (server) => {
                   const loadPercentage =
                     Math.min(
-                      (
-                        server.currentLoad /
-                        server.maxLoad
-                      ) * 100,
+                      (server.currentLoad /
+                        server.maxLoad) *
+                        100,
                       100
                     );
 
@@ -581,9 +774,7 @@ export default function Home() {
                     >
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold">
-                          {
-                            server.name
-                          }
+                          {server.name}
                         </h3>
 
                         <span className="text-xs text-slate-400">
@@ -609,10 +800,7 @@ export default function Home() {
                           {server.currentLoad.toFixed(
                             1
                           )}{" "}
-                          /{" "}
-                          {
-                            server.maxLoad
-                          }
+                          / {server.maxLoad}
                         </p>
 
                         <p>
@@ -625,31 +813,21 @@ export default function Home() {
 
                         <p>
                           Bandwidth:{" "}
-                          {
-                            server.bandwidthMbps
-                          }{" "}
-                          Mbps
+                          {server.bandwidthMbps} Mbps
                         </p>
 
                         <p>
                           Active Requests:{" "}
-                          {
-                            server.activeRequests
-                          }
+                          {server.activeRequests}
                         </p>
 
                         <p>
                           Completed Requests:{" "}
-                          {
-                            server.completedRequests
-                          }
+                          {server.completedRequests}
                         </p>
 
                         <p>
-                          Status:{" "}
-                          {
-                            server.status
-                          }
+                          Status: {server.status}
                         </p>
                       </div>
                     </div>
@@ -662,77 +840,46 @@ export default function Home() {
 
         {/* LIVE METRICS */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-xl bg-slate-900 p-4">
-            <p className="text-sm text-slate-400">
-              Queue Length
-            </p>
+          <MetricBox
+            label="Queue Length"
+            value={
+              simulationState.requestQueue.length
+            }
+          />
 
-            <p className="mt-1 text-2xl font-semibold">
-              {
-                simulationState
-                  .requestQueue.length
-              }
-            </p>
-          </div>
+          <MetricBox
+            label="Active Requests"
+            value={
+              simulationState.activeRequests.length
+            }
+          />
 
-          <div className="rounded-xl bg-slate-900 p-4">
-            <p className="text-sm text-slate-400">
-              Active Requests
-            </p>
+          <MetricBox
+            label="Total Requests"
+            value={
+              simulationState.metrics.totalRequests
+            }
+          />
 
-            <p className="mt-1 text-2xl font-semibold">
-              {
-                simulationState
-                  .activeRequests.length
-              }
-            </p>
-          </div>
+          <MetricBox
+            label="Completed"
+            value={
+              simulationState.metrics
+                .completedRequests
+            }
+          />
 
-          <div className="rounded-xl bg-slate-900 p-4">
-            <p className="text-sm text-slate-400">
-              Total Requests
-            </p>
-
-            <p className="mt-1 text-2xl font-semibold">
-              {
-                simulationState
-                  .metrics.totalRequests
-              }
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-slate-900 p-4">
-            <p className="text-sm text-slate-400">
-              Completed
-            </p>
-
-            <p className="mt-1 text-2xl font-semibold">
-              {
-                simulationState
-                  .metrics
-                  .completedRequests
-              }
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-slate-900 p-4">
-            <p className="text-sm text-slate-400">
-              Avg Server Load
-            </p>
-
-            <p className="mt-1 text-2xl font-semibold">
-              {simulationState.metrics.averageServerLoad.toFixed(
-                2
-              )}
-            </p>
-          </div>
+          <MetricBox
+            label="Avg Server Load"
+            value={simulationState.metrics.averageServerLoad.toFixed(
+              2
+            )}
+          />
         </section>
 
         {/* PRIORITY QUEUE */}
         <PriorityQueuePanel
-          requests={
-            simulationState.requestQueue
-          }
+          requests={simulationState.requestQueue}
           algorithm={algorithm}
         />
 
@@ -744,108 +891,58 @@ export default function Home() {
 
           {!lastRequest ? (
             <p className="text-slate-400">
-              No request has been
-              generated yet.
+              No request has been generated yet.
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <p className="text-xs text-slate-400">
-                  Request
-                </p>
+              <RequestDetail
+                label="Request"
+                value={lastRequest.id}
+              />
 
-                <p>
-                  {lastRequest.id}
-                </p>
-              </div>
+              <RequestDetail
+                label="Priority"
+                value={lastRequest.priority}
+              />
 
-              <div>
-                <p className="text-xs text-slate-400">
-                  Priority
-                </p>
+              <RequestDetail
+                label="Request Size"
+                value={lastRequest.requestSize}
+              />
 
-                <p>
-                  {
-                    lastRequest.priority
-                  }
-                </p>
-              </div>
+              <RequestDetail
+                label="Complexity"
+                value={lastRequest.complexity}
+              />
 
-              <div>
-                <p className="text-xs text-slate-400">
-                  Request Size
-                </p>
+              <RequestDetail
+                label="Status"
+                value={lastRequest.status}
+              />
 
-                <p>
-                  {
-                    lastRequest.requestSize
-                  }
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-400">
-                  Complexity
-                </p>
-
-                <p>
-                  {
-                    lastRequest.complexity
-                  }
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-400">
-                  Status
-                </p>
-
-                <p>
-                  {
-                    lastRequest.status
-                  }
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-400">
-                  Selected Server
-                </p>
-
-                <p>
-                  {lastRequest.assignedServerId
+              <RequestDetail
+                label="Selected Server"
+                value={
+                  lastRequest.assignedServerId
                     ? `Server ${lastRequest.assignedServerId}`
-                    : "Waiting in queue"}
-                </p>
-              </div>
+                    : "Waiting in queue"
+                }
+              />
 
-              <div>
-                <p className="text-xs text-slate-400">
-                  Waiting Time
-                </p>
+              <RequestDetail
+                label="Waiting Time"
+                value={`${(
+                  lastRequest.waitingTimeMs ?? 0
+                ).toFixed(2)} ms`}
+              />
 
-                <p>
-                  {(
-                    lastRequest.waitingTimeMs ??
-                    0
-                  ).toFixed(2)}{" "}
-                  ms
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-400">
-                  Total Response Time
-                </p>
-
-                <p>
-                  {(
-                    lastRequest.totalResponseTimeMs ??
-                    0
-                  ).toFixed(2)}{" "}
-                  ms
-                </p>
-              </div>
+              <RequestDetail
+                label="Total Response Time"
+                value={`${(
+                  lastRequest.totalResponseTimeMs ??
+                  0
+                ).toFixed(2)} ms`}
+              />
             </div>
           )}
         </section>
@@ -854,9 +951,7 @@ export default function Home() {
         {algorithm === "hybrid" && (
           <HybridScorePanel
             request={lastRequest}
-            servers={
-              simulationState.servers
-            }
+            servers={simulationState.servers}
             alpha={alpha}
             highPriorityThreshold={
               HIGH_PRIORITY_THRESHOLD
@@ -869,24 +964,58 @@ export default function Home() {
           selectedServerId={
             lastRequest?.assignedServerId
           }
-          requestStatus={
-            lastRequest?.status
-          }
+          requestStatus={lastRequest?.status}
         />
 
         {/* LIVE CHARTS */}
         <LiveCharts
-          servers={
-            simulationState.servers
-          }
-          isRunning={
-            autoTrafficRunning
-          }
-          resetKey={
-            chartResetKey
-          }
+          servers={simulationState.servers}
+          isRunning={autoTrafficRunning}
+          resetKey={chartResetKey}
         />
       </div>
     </main>
+  );
+}
+
+interface MetricBoxProps {
+  label: string;
+  value: string | number;
+}
+
+function MetricBox({
+  label,
+  value,
+}: MetricBoxProps) {
+  return (
+    <div className="rounded-xl bg-slate-900 p-4">
+      <p className="text-sm text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-1 text-2xl font-semibold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+interface RequestDetailProps {
+  label: string;
+  value: string | number;
+}
+
+function RequestDetail({
+  label,
+  value,
+}: RequestDetailProps) {
+  return (
+    <div>
+      <p className="text-xs text-slate-400">
+        {label}
+      </p>
+
+      <p>{value}</p>
+    </div>
   );
 }
