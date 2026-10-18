@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-
 import Link from "next/link";
 
 import {
@@ -121,12 +120,21 @@ export default function ComparePage() {
     <main className="min-h-screen bg-slate-950 p-6 text-white">
       <div className="mx-auto max-w-7xl">
         <header className="mb-8">
-          <Link
-            href="/"
-            className="text-sm text-blue-400 hover:text-blue-300"
-          >
-            ← Back to Live Simulation
-          </Link>
+          <div className="flex flex-wrap gap-4">
+            <Link
+              href="/"
+              className="text-sm text-blue-400 hover:text-blue-300"
+            >
+              ← Back to Live Simulation
+            </Link>
+
+            <Link
+              href="/research"
+              className="text-sm text-violet-400 hover:text-violet-300"
+            >
+              Research Reference
+            </Link>
+          </div>
 
           <h1 className="mt-4 text-3xl font-bold">
             Algorithm Comparison
@@ -378,8 +386,7 @@ export default function ComparePage() {
 
             <section className="mt-6 rounded-xl bg-slate-900 p-6">
               <h2 className="mb-5 text-xl font-semibold">
-                Requests Completed by
-                Server
+                Requests Completed by Server
               </h2>
 
               <div className="grid gap-6 lg:grid-cols-3">
@@ -428,8 +435,7 @@ export default function ComparePage() {
 
             <section className="mt-6 rounded-xl border border-amber-900 bg-amber-950/30 p-6">
               <h2 className="font-semibold text-amber-300">
-                Research
-                Implementation Note
+                Research Implementation Note
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-slate-300">
