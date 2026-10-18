@@ -1,12 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   LoadBalancingAlgorithm,
@@ -20,87 +15,55 @@ import NetworkTopology from "@/components/NetworkTopology";
 import HybridScorePanel from "@/components/HybridScorePanel";
 import PriorityQueuePanel from "@/components/PriorityQueuePanel";
 
-import {
-  initialServers,
-} from "@/simulation/initialServers";
-
-import {
-  generateRequest,
-} from "@/simulation/requestGenerator";
-
-import {
-  processSimulationTick,
-} from "@/simulation/simulator";
+import { initialServers } from "@/simulation/initialServers";
+import { generateRequest } from "@/simulation/requestGenerator";
+import { processSimulationTick } from "@/simulation/simulator";
 
 const HIGH_PRIORITY_THRESHOLD = 4;
 
-const createInitialState =
-  (): SimulationState => ({
-    algorithm: "hybrid",
+const createInitialState = (): SimulationState => ({
+  algorithm: "hybrid",
 
-    servers: initialServers.map(
-      (server) => ({
-        ...server,
-      })
-    ),
+  servers: initialServers.map((server) => ({
+    ...server,
+  })),
 
-    requestQueue: [],
+  requestQueue: [],
+  activeRequests: [],
+  completedRequests: [],
 
-    activeRequests: [],
+  metrics: {
+    totalRequests: 0,
+    completedRequests: 0,
+    failedRequests: 0,
+    averageResponseTimeMs: 0,
+    averageWaitingTimeMs: 0,
+    averageServerLoad: 0,
+  },
 
-    completedRequests: [],
-
-    metrics: {
-      totalRequests: 0,
-      completedRequests: 0,
-      failedRequests: 0,
-      averageResponseTimeMs: 0,
-      averageWaitingTimeMs: 0,
-      averageServerLoad: 0,
-    },
-
-    isRunning: false,
-  });
+  isRunning: false,
+});
 
 export default function Home() {
-  const [
-    simulationState,
-    setSimulationState,
-  ] = useState<SimulationState>(
-    createInitialState
-  );
+  const [simulationState, setSimulationState] =
+    useState<SimulationState>(createInitialState);
 
-  const [
-    algorithm,
-    setAlgorithm,
-  ] =
-    useState<LoadBalancingAlgorithm>(
-      "hybrid"
-    );
+  const [algorithm, setAlgorithm] =
+    useState<LoadBalancingAlgorithm>("hybrid");
 
-  const [alpha, setAlpha] =
-    useState(0.5);
+  const [alpha, setAlpha] = useState(0.5);
 
-  const [
-    priority,
-    setPriority,
-  ] =
+  const [priority, setPriority] =
     useState<RequestPriority>(5);
 
-  const [
-    requestSize,
-    setRequestSize,
-  ] = useState(5);
+  const [requestSize, setRequestSize] =
+    useState(5);
 
-  const [
-    complexity,
-    setComplexity,
-  ] = useState(5);
+  const [complexity, setComplexity] =
+    useState(5);
 
-  const [
-    lastRequestId,
-    setLastRequestId,
-  ] = useState<string | null>(null);
+  const [lastRequestId, setLastRequestId] =
+    useState<string | null>(null);
 
   const [
     autoTrafficRunning,
@@ -112,35 +75,30 @@ export default function Home() {
     setRequestsPerSecond,
   ] = useState(5);
 
-  const [
-    chartResetKey,
-    setChartResetKey,
-  ] = useState(0);
+  const [chartResetKey, setChartResetKey] =
+    useState(0);
 
-  const requestCounter =
-    useRef(1);
+  const requestCounter = useRef(1);
 
   /*
    * Main simulation engine.
    */
   useEffect(() => {
     const timer = setInterval(() => {
-      setSimulationState(
-        (currentState) =>
-          processSimulationTick(
-            currentState,
-            {
-              alpha,
-              highPriorityThreshold:
-                HIGH_PRIORITY_THRESHOLD,
-            },
-            Date.now()
-          )
+      setSimulationState((currentState) =>
+        processSimulationTick(
+          currentState,
+          {
+            alpha,
+            highPriorityThreshold:
+              HIGH_PRIORITY_THRESHOLD,
+          },
+          Date.now()
+        )
       );
     }, 100);
 
-    return () =>
-      clearInterval(timer);
+    return () => clearInterval(timer);
   }, [alpha]);
 
   /*
@@ -154,46 +112,40 @@ export default function Home() {
     const intervalMs =
       1000 / requestsPerSecond;
 
-    const trafficTimer =
-      setInterval(() => {
-        const generatedRequest =
-          generateRequest();
+    const trafficTimer = setInterval(() => {
+      const generatedRequest =
+        generateRequest();
 
-        const request: NetworkRequest = {
-          ...generatedRequest,
+      const request: NetworkRequest = {
+        ...generatedRequest,
 
-          id: `AUTO-${requestCounter.current++}`,
+        id: `AUTO-${requestCounter.current++}`,
 
-          status: "queued",
+        status: "queued",
 
-          queueEntryTime:
-            Date.now(),
-        };
+        queueEntryTime: Date.now(),
+      };
 
-        setLastRequestId(
-          request.id
-        );
+      setLastRequestId(request.id);
 
-        setSimulationState(
-          (currentState) => ({
-            ...currentState,
+      setSimulationState(
+        (currentState) => ({
+          ...currentState,
 
-            algorithm,
+          algorithm,
 
-            requestQueue: [
-              ...currentState.requestQueue,
-              request,
-            ],
+          requestQueue: [
+            ...currentState.requestQueue,
+            request,
+          ],
 
-            isRunning: true,
-          })
-        );
-      }, intervalMs);
+          isRunning: true,
+        })
+      );
+    }, intervalMs);
 
     return () =>
-      clearInterval(
-        trafficTimer
-      );
+      clearInterval(trafficTimer);
   }, [
     autoTrafficRunning,
     requestsPerSecond,
@@ -203,18 +155,15 @@ export default function Home() {
   const lastRequest =
     simulationState.activeRequests.find(
       (request) =>
-        request.id ===
-        lastRequestId
+        request.id === lastRequestId
     ) ??
     simulationState.completedRequests.find(
       (request) =>
-        request.id ===
-        lastRequestId
+        request.id === lastRequestId
     ) ??
     simulationState.requestQueue.find(
       (request) =>
-        request.id ===
-        lastRequestId
+        request.id === lastRequestId
     ) ??
     null;
 
@@ -237,9 +186,7 @@ export default function Home() {
       queueEntryTime: now,
     };
 
-    setLastRequestId(
-      request.id
-    );
+    setLastRequestId(request.id);
 
     setSimulationState(
       (currentState) => ({
@@ -306,8 +253,8 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold">
-                Adaptive Hybrid Load
-                Balancing Simulator
+                Adaptive Hybrid Load Balancing
+                Simulator
               </h1>
 
               <p className="mt-2 text-slate-400">
@@ -316,12 +263,21 @@ export default function Home() {
               </p>
             </div>
 
-            <Link
-              href="/compare"
-              className="rounded-lg bg-violet-600 px-5 py-3 font-semibold text-white transition hover:bg-violet-500"
-            >
-              Compare Algorithms
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/research"
+                className="rounded-lg bg-slate-800 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
+              >
+                Research
+              </Link>
+
+              <Link
+                href="/compare"
+                className="rounded-lg bg-violet-600 px-5 py-3 font-semibold text-white transition hover:bg-violet-500"
+              >
+                Compare Algorithms
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -368,8 +324,7 @@ export default function Home() {
               </div>
 
               {/* ALPHA CONTROL */}
-              {algorithm ===
-                "hybrid" && (
+              {algorithm === "hybrid" && (
                 <div className="rounded-lg border border-violet-900 bg-violet-950/20 p-4">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-semibold">
@@ -387,13 +342,10 @@ export default function Home() {
                     max="1"
                     step="0.05"
                     value={alpha}
-                    onChange={(
-                      event
-                    ) =>
+                    onChange={(event) =>
                       setAlpha(
                         Number(
-                          event.target
-                            .value
+                          event.target.value
                         )
                       )
                     }
@@ -414,8 +366,8 @@ export default function Home() {
                   </div>
 
                   <p className="mt-3 text-xs leading-5 text-slate-400">
-                    Score = α × R_fast +
-                    (1 - α) × R_bal
+                    Score = α × R_fast + (1 -
+                    α) × R_bal
                   </p>
                 </div>
               )}
@@ -490,7 +442,6 @@ export default function Home() {
                 </h3>
 
                 <div className="space-y-4">
-                  {/* PRIORITY */}
                   <div>
                     <label className="mb-1 block text-sm">
                       Priority:{" "}
@@ -504,9 +455,7 @@ export default function Home() {
                       value={
                         priority
                       }
-                      onChange={(
-                        event
-                      ) =>
+                      onChange={(event) =>
                         setPriority(
                           Number(
                             event.target
@@ -518,7 +467,6 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* REQUEST SIZE */}
                   <div>
                     <label className="mb-1 block text-sm">
                       Request Size:{" "}
@@ -532,9 +480,7 @@ export default function Home() {
                       value={
                         requestSize
                       }
-                      onChange={(
-                        event
-                      ) =>
+                      onChange={(event) =>
                         setRequestSize(
                           Number(
                             event.target
@@ -546,7 +492,6 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* COMPLEXITY */}
                   <div>
                     <label className="mb-1 block text-sm">
                       Complexity:{" "}
@@ -560,9 +505,7 @@ export default function Home() {
                       value={
                         complexity
                       }
-                      onChange={(
-                        event
-                      ) =>
+                      onChange={(event) =>
                         setComplexity(
                           Number(
                             event.target
@@ -633,9 +576,7 @@ export default function Home() {
 
                   return (
                     <div
-                      key={
-                        server.id
-                      }
+                      key={server.id}
                       className="rounded-lg border border-slate-700 bg-slate-800 p-4"
                     >
                       <div className="flex items-center justify-between">
@@ -729,8 +670,7 @@ export default function Home() {
             <p className="mt-1 text-2xl font-semibold">
               {
                 simulationState
-                  .requestQueue
-                  .length
+                  .requestQueue.length
               }
             </p>
           </div>
@@ -743,8 +683,7 @@ export default function Home() {
             <p className="mt-1 text-2xl font-semibold">
               {
                 simulationState
-                  .activeRequests
-                  .length
+                  .activeRequests.length
               }
             </p>
           </div>
@@ -757,8 +696,7 @@ export default function Home() {
             <p className="mt-1 text-2xl font-semibold">
               {
                 simulationState
-                  .metrics
-                  .totalRequests
+                  .metrics.totalRequests
               }
             </p>
           </div>
@@ -817,9 +755,7 @@ export default function Home() {
                 </p>
 
                 <p>
-                  {
-                    lastRequest.id
-                  }
+                  {lastRequest.id}
                 </p>
               </div>
 
