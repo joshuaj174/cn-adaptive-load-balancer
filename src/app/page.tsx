@@ -116,156 +116,96 @@ const createInitialState = (): SimulationState => ({
 });
 
 export default function Home() {
-  const [
-    simulationState,
-    setSimulationState,
-  ] =
-    useState<SimulationState>(
-      createInitialState
-    );
+  const [simulationState, setSimulationState] =
+    useState<SimulationState>(createInitialState);
 
-  const [
-    algorithm,
-    setAlgorithm,
-  ] =
-    useState<LoadBalancingAlgorithm>(
-      "hybrid"
-    );
+  const [algorithm, setAlgorithm] =
+    useState<LoadBalancingAlgorithm>("hybrid");
 
-  const [
-    alpha,
-    setAlpha,
-  ] = useState(0.5);
+  const [alpha, setAlpha] = useState(0.5);
 
-  const [
-    priority,
-    setPriority,
-  ] =
-    useState<RequestPriority>(
-      5
-    );
+  const [priority, setPriority] =
+    useState<RequestPriority>(5);
 
-  const [
-    requestSize,
-    setRequestSize,
-  ] = useState(5);
+  const [requestSize, setRequestSize] = useState(5);
 
-  const [
-    complexity,
-    setComplexity,
-  ] = useState(5);
+  const [complexity, setComplexity] = useState(5);
 
-  const [
-    lastRequestId,
-    setLastRequestId,
-  ] =
-    useState<string | null>(
-      null
-    );
+  const [lastRequestId, setLastRequestId] =
+    useState<string | null>(null);
 
-  const [
-    autoTrafficRunning,
-    setAutoTrafficRunning,
-  ] = useState(false);
+  const [autoTrafficRunning, setAutoTrafficRunning] =
+    useState(false);
 
-  const [
-    requestsPerSecond,
-    setRequestsPerSecond,
-  ] = useState(5);
+  const [requestsPerSecond, setRequestsPerSecond] =
+    useState(5);
 
-  const [
-    chartResetKey,
-    setChartResetKey,
-  ] = useState(0);
+  const [chartResetKey, setChartResetKey] =
+    useState(0);
 
-  const [
-    selectedScenario,
-    setSelectedScenario,
-  ] =
-    useState<ScenarioId>(
-      "custom"
-    );
+  const [selectedScenario, setSelectedScenario] =
+    useState<ScenarioId>("custom");
 
-  const requestCounter =
-    useRef(1);
+  const requestCounter = useRef(1);
 
-  /*
-   * Main simulation engine.
-   */
   useEffect(() => {
-    const timer =
-      setInterval(() => {
-        setSimulationState(
-          (currentState) =>
-            processSimulationTick(
-              currentState,
-              {
-                alpha,
-                highPriorityThreshold:
-                  HIGH_PRIORITY_THRESHOLD,
-              },
-              Date.now()
-            )
-        );
-      }, 100);
+    const timer = setInterval(() => {
+      setSimulationState((currentState) =>
+        processSimulationTick(
+          currentState,
+          {
+            alpha,
+            highPriorityThreshold:
+              HIGH_PRIORITY_THRESHOLD,
+          },
+          Date.now()
+        )
+      );
+    }, 100);
 
-    return () =>
-      clearInterval(timer);
+    return () => clearInterval(timer);
   }, [alpha]);
 
-  /*
-   * Automatic traffic generator.
-   */
   useEffect(() => {
     if (!autoTrafficRunning) {
       return;
     }
 
     const intervalMs =
-      1000 /
-      requestsPerSecond;
+      1000 / requestsPerSecond;
 
-    const trafficTimer =
-      setInterval(() => {
-        const generatedRequest =
-          generateRequest();
+    const trafficTimer = setInterval(() => {
+      const generatedRequest =
+        generateRequest();
 
-        const request: NetworkRequest =
-          {
-            ...generatedRequest,
+      const request: NetworkRequest = {
+        ...generatedRequest,
 
-            id: `AUTO-${requestCounter.current++}`,
+        id: `AUTO-${requestCounter.current++}`,
 
-            status: "queued",
+        status: "queued",
 
-            queueEntryTime:
-              Date.now(),
-          };
+        queueEntryTime: Date.now(),
+      };
 
-        setLastRequestId(
-          request.id
-        );
+      setLastRequestId(request.id);
 
-        setSimulationState(
-          (currentState) => ({
-            ...currentState,
+      setSimulationState((currentState) => ({
+        ...currentState,
 
-            algorithm,
+        algorithm,
 
-            requestQueue: [
-              ...currentState.requestQueue,
-              request,
-            ],
+        requestQueue: [
+          ...currentState.requestQueue,
+          request,
+        ],
 
-            isRunning: true,
-          })
-        );
-      }, intervalMs);
+        isRunning: true,
+      }));
+    }, intervalMs);
 
     return () =>
-      clearInterval(
-        trafficTimer
-      );
+      clearInterval(trafficTimer);
   }, [
     autoTrafficRunning,
     requestsPerSecond,
@@ -275,41 +215,32 @@ export default function Home() {
   const lastRequest =
     simulationState.activeRequests.find(
       (request) =>
-        request.id ===
-        lastRequestId
+        request.id === lastRequestId
     ) ??
     simulationState.completedRequests.find(
       (request) =>
-        request.id ===
-        lastRequestId
+        request.id === lastRequestId
     ) ??
     simulationState.requestQueue.find(
       (request) =>
-        request.id ===
-        lastRequestId
+        request.id === lastRequestId
     ) ??
     null;
 
   const activeScenario =
-    selectedScenario ===
-    "custom"
+    selectedScenario === "custom"
       ? null
       : simulationScenarios.find(
           (scenario) =>
-            scenario.id ===
-            selectedScenario
+            scenario.id === selectedScenario
         ) ?? null;
 
   function handleScenarioChange(
     scenarioId: ScenarioId
   ) {
-    setSelectedScenario(
-      scenarioId
-    );
+    setSelectedScenario(scenarioId);
 
-    if (
-      scenarioId === "custom"
-    ) {
+    if (scenarioId === "custom") {
       return;
     }
 
@@ -323,29 +254,16 @@ export default function Home() {
       return;
     }
 
-    setAlgorithm(
-      scenario.algorithm
-    );
-
-    setAlpha(
-      scenario.alpha
-    );
+    setAlgorithm(scenario.algorithm);
+    setAlpha(scenario.alpha);
 
     setRequestsPerSecond(
       scenario.requestsPerSecond
     );
 
-    setPriority(
-      scenario.priority
-    );
-
-    setRequestSize(
-      scenario.requestSize
-    );
-
-    setComplexity(
-      scenario.complexity
-    );
+    setPriority(scenario.priority);
+    setRequestSize(scenario.requestSize);
+    setComplexity(scenario.complexity);
 
     setSimulationState(
       (currentState) => ({
@@ -369,7 +287,6 @@ export default function Home() {
     setSimulationState(
       (currentState) => ({
         ...currentState,
-
         algorithm: value,
       })
     );
@@ -379,81 +296,57 @@ export default function Home() {
     value: number
   ) {
     setAlpha(value);
-
-    setSelectedScenario(
-      "custom"
-    );
+    setSelectedScenario("custom");
   }
 
   function handleTrafficRateChange(
     value: number
   ) {
-    setRequestsPerSecond(
-      value
-    );
-
-    setSelectedScenario(
-      "custom"
-    );
+    setRequestsPerSecond(value);
+    setSelectedScenario("custom");
   }
 
   function handlePriorityChange(
     value: RequestPriority
   ) {
     setPriority(value);
-
-    setSelectedScenario(
-      "custom"
-    );
+    setSelectedScenario("custom");
   }
 
   function handleRequestSizeChange(
     value: number
   ) {
     setRequestSize(value);
-
-    setSelectedScenario(
-      "custom"
-    );
+    setSelectedScenario("custom");
   }
 
   function handleComplexityChange(
     value: number
   ) {
     setComplexity(value);
-
-    setSelectedScenario(
-      "custom"
-    );
+    setSelectedScenario("custom");
   }
 
   function handleSendRequest() {
-    const now =
-      Date.now();
+    const now = Date.now();
 
-    const request: NetworkRequest =
-      {
-        id: `MANUAL-${requestCounter.current++}`,
+    const request: NetworkRequest = {
+      id: `MANUAL-${requestCounter.current++}`,
 
-        priority,
+      priority,
 
-        requestSize,
+      requestSize,
 
-        complexity,
+      complexity,
 
-        status:
-          "queued",
+      status: "queued",
 
-        arrivalTime:
-          now,
+      arrivalTime: now,
 
-        queueEntryTime:
-          now,
-      };
+      queueEntryTime: now,
+    };
 
-    setLastRequestId(
-      request.id
-    );
+    setLastRequestId(request.id);
 
     setSimulationState(
       (currentState) => ({
@@ -470,9 +363,7 @@ export default function Home() {
   }
 
   function handleStartAutoTraffic() {
-    setAutoTrafficRunning(
-      true
-    );
+    setAutoTrafficRunning(true);
 
     setSimulationState(
       (currentState) => ({
@@ -486,9 +377,7 @@ export default function Home() {
   }
 
   function handleStopAutoTraffic() {
-    setAutoTrafficRunning(
-      false
-    );
+    setAutoTrafficRunning(false);
 
     setSimulationState(
       (currentState) => ({
@@ -500,265 +389,287 @@ export default function Home() {
   }
 
   function handleReset() {
-    setAutoTrafficRunning(
-      false
-    );
+    setAutoTrafficRunning(false);
 
     setSimulationState(
       createInitialState()
     );
 
-    setLastRequestId(
-      null
-    );
+    setLastRequestId(null);
 
-    requestCounter.current =
-      1;
+    requestCounter.current = 1;
 
     setChartResetKey(
       (currentKey) =>
         currentKey + 1
     );
 
-    setAlgorithm(
-      "hybrid"
-    );
-
-    setAlpha(
-      0.5
-    );
-
-    setPriority(
-      5
-    );
-
-    setRequestSize(
-      5
-    );
-
-    setComplexity(
-      5
-    );
-
-    setRequestsPerSecond(
-      5
-    );
-
-    setSelectedScenario(
-      "custom"
-    );
+    setAlgorithm("hybrid");
+    setAlpha(0.5);
+    setPriority(5);
+    setRequestSize(5);
+    setComplexity(5);
+    setRequestsPerSecond(5);
+    setSelectedScenario("custom");
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 p-6 text-white">
-      <div className="mx-auto max-w-7xl">
-        {/* HEADER */}
-        <header className="mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">
-                Adaptive Hybrid
-                Load Balancing
-                Simulator
+    <main className="min-h-screen bg-slate-950 text-white">
+      {/* TOP NAVIGATION */}
+      <div className="border-b border-slate-800 bg-slate-950/95">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+          <div>
+            <p className="text-sm font-bold tracking-wide text-blue-400">
+              CN MINI PROJECT
+            </p>
+
+            <p className="text-xs text-slate-500">
+              Adaptive Load Balancing Simulator
+            </p>
+          </div>
+
+          <nav className="flex flex-wrap gap-2">
+            <Link
+              href="/"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+            >
+              Simulator
+            </Link>
+
+            <Link
+              href="/compare"
+              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-700"
+            >
+              Comparison
+            </Link>
+
+            <Link
+              href="/research"
+              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-700"
+            >
+              Research
+            </Link>
+          </nav>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl p-6">
+        {/* HERO */}
+        <header className="mb-8 overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/40 p-7">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-3xl">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Badge text="FRLB" />
+                <Badge text="PBLB" />
+                <Badge text="Hybrid FRLB-PBLB" />
+                <Badge text="5 Simulated Servers" />
+              </div>
+
+              <h1 className="text-3xl font-bold sm:text-4xl">
+                Adaptive Hybrid FRLB-PBLB
+                Load Balancing Simulator
               </h1>
 
-              <p className="mt-2 text-slate-400">
-                FRLB, PBLB and
-                Hybrid FRLB-PBLB
-                simulation
+              <p className="mt-4 max-w-2xl leading-7 text-slate-400">
+                A web-based network simulation
+                demonstrating fastest-response,
+                priority-based and hybrid load
+                balancing using dynamic server
+                load, response time and request
+                traffic.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/research"
-                className="rounded-lg bg-slate-800 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
-              >
-                Research
-              </Link>
+            <div
+              className={`rounded-xl border px-5 py-4 ${
+                autoTrafficRunning
+                  ? "border-green-800 bg-green-950/30"
+                  : "border-slate-700 bg-slate-900"
+              }`}
+            >
+              <p className="text-xs uppercase tracking-wider text-slate-500">
+                Simulation Status
+              </p>
 
-              <Link
-                href="/compare"
-                className="rounded-lg bg-violet-600 px-5 py-3 font-semibold text-white transition hover:bg-violet-500"
-              >
-                Compare Algorithms
-              </Link>
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className={`h-3 w-3 rounded-full ${
+                    autoTrafficRunning
+                      ? "bg-green-400"
+                      : "bg-slate-500"
+                  }`}
+                />
+
+                <span
+                  className={`font-semibold ${
+                    autoTrafficRunning
+                      ? "text-green-300"
+                      : "text-slate-300"
+                  }`}
+                >
+                  {autoTrafficRunning
+                    ? "Running"
+                    : "Stopped"}
+                </span>
+              </div>
+
+              <p className="mt-2 text-xs text-slate-500">
+                {algorithm.toUpperCase()} ·{" "}
+                {requestsPerSecond} req/s
+              </p>
             </div>
           </div>
         </header>
 
-        {/* SIMULATION SCENARIOS */}
-        <section className="mb-6 rounded-xl border border-blue-900 bg-slate-900 p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        {/* SECTION TITLE */}
+        <SectionHeading
+          eyebrow="Workload"
+          title="Simulation Scenarios"
+          description="Choose a preset workload or manually configure the simulator. Scenarios only change workload controls and do not modify the research algorithms."
+        />
+
+        {/* SCENARIOS */}
+        <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_2fr]">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-blue-400">
-                Workload Presets
-              </p>
-
-              <h2 className="mt-1 text-xl font-semibold">
-                Simulation Scenarios
-              </h2>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                Scenarios only
-                configure the
-                workload and
-                simulator controls.
-                They do not change
-                the FRLB, PBLB or
-                Hybrid algorithm
-                logic.
-              </p>
-            </div>
-
-            <div className="w-full sm:w-72">
-              <label className="mb-2 block text-sm text-slate-300">
-                Select Scenario
+              <label className="mb-2 block text-sm font-semibold text-slate-300">
+                Scenario Preset
               </label>
 
               <select
-                value={
-                  selectedScenario
-                }
-                onChange={(
-                  event
-                ) =>
+                value={selectedScenario}
+                onChange={(event) =>
                   handleScenarioChange(
                     event.target
                       .value as ScenarioId
                   )
                 }
-                disabled={
-                  autoTrafficRunning
-                }
-                className="w-full rounded-lg bg-slate-800 p-3 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={autoTrafficRunning}
+                className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 outline-none transition focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="custom">
-                  Custom
-                  Configuration
+                  Custom Configuration
                 </option>
 
                 {simulationScenarios.map(
                   (scenario) => (
                     <option
-                      key={
-                        scenario.id
-                      }
-                      value={
-                        scenario.id
-                      }
+                      key={scenario.id}
+                      value={scenario.id}
                     >
-                      {
-                        scenario.name
-                      }
+                      {scenario.name}
                     </option>
                   )
                 )}
               </select>
+
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                Select a scenario before
+                starting automatic traffic.
+              </p>
             </div>
-          </div>
 
-          {activeScenario && (
-            <div className="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
-              <div className="rounded-lg bg-slate-800 p-5">
-                <h3 className="font-semibold text-blue-300">
-                  {
-                    activeScenario.name
-                  }
-                </h3>
+            {activeScenario ? (
+              <div className="rounded-xl border border-blue-900 bg-blue-950/20 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-blue-400">
+                      Active Scenario
+                    </p>
 
-                <p className="mt-2 text-sm leading-6 text-slate-400">
+                    <h3 className="mt-1 text-lg font-semibold">
+                      {activeScenario.name}
+                    </h3>
+                  </div>
+
+                  <span className="rounded-full bg-blue-900/60 px-3 py-1 text-xs font-semibold text-blue-200">
+                    {
+                      activeScenario.algorithm
+                    }
+                  </span>
+                </div>
+
+                <p className="mt-3 text-sm leading-6 text-slate-400">
                   {
                     activeScenario.description
                   }
                 </p>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-800 p-5 text-sm">
-                <div>
-                  <p className="text-xs text-slate-500">
-                    Algorithm
-                  </p>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <ScenarioValue
+                    label="Traffic"
+                    value={`${activeScenario.requestsPerSecond} req/s`}
+                  />
 
-                  <p className="mt-1 font-semibold uppercase">
-                    {
-                      activeScenario.algorithm
-                    }
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-500">
-                    Traffic
-                  </p>
-
-                  <p className="mt-1 font-semibold">
-                    {
-                      activeScenario.requestsPerSecond
-                    }{" "}
-                    req/s
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-500">
-                    Priority
-                  </p>
-
-                  <p className="mt-1 font-semibold">
-                    {
+                  <ScenarioValue
+                    label="Priority"
+                    value={
                       activeScenario.priority
                     }
-                  </p>
-                </div>
+                  />
 
-                <div>
-                  <p className="text-xs text-slate-500">
-                    Complexity
-                  </p>
+                  <ScenarioValue
+                    label="Size"
+                    value={
+                      activeScenario.requestSize
+                    }
+                  />
 
-                  <p className="mt-1 font-semibold">
-                    {
+                  <ScenarioValue
+                    label="Complexity"
+                    value={
                       activeScenario.complexity
                     }
-                  </p>
+                  />
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-5">
+                <p className="font-semibold">
+                  Custom Configuration
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Adjust the algorithm,
+                  traffic rate, priority,
+                  request size, complexity
+                  and Hybrid alpha manually.
+                </p>
+              </div>
+            )}
+          </div>
         </section>
+
+        <SectionHeading
+          eyebrow="Control"
+          title="Live Simulation"
+          description="Configure traffic and observe how requests are distributed across the five simulated servers."
+        />
 
         {/* CONTROLS + SERVERS */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* SIMULATION CONTROLS */}
-          <section className="rounded-xl bg-slate-900 p-6">
+          {/* CONTROLS */}
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="mb-5 text-xl font-semibold">
               Simulation Controls
             </h2>
 
-            <div className="space-y-4">
-              {/* ALGORITHM */}
+            <div className="space-y-5">
               <div>
-                <label className="mb-1 block text-sm">
+                <label className="mb-2 block text-sm font-semibold text-slate-300">
                   Algorithm
                 </label>
 
                 <select
-                  value={
-                    algorithm
-                  }
-                  onChange={(
-                    event
-                  ) =>
+                  value={algorithm}
+                  onChange={(event) =>
                     handleAlgorithmChange(
                       event.target
                         .value as LoadBalancingAlgorithm
                     )
                   }
-                  disabled={
-                    autoTrafficRunning
-                  }
-                  className="w-full rounded bg-slate-800 p-2 disabled:opacity-50"
+                  disabled={autoTrafficRunning}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 outline-none focus:border-blue-500 disabled:opacity-50"
                 >
                   <option value="frlb">
                     FRLB
@@ -774,19 +685,21 @@ export default function Home() {
                 </select>
               </div>
 
-              {/* ALPHA */}
-              {algorithm ===
-                "hybrid" && (
-                <div className="rounded-lg border border-violet-900 bg-violet-950/20 p-4">
+              {algorithm === "hybrid" && (
+                <div className="rounded-xl border border-violet-900 bg-violet-950/20 p-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold">
-                      Hybrid Alpha
-                    </label>
+                    <div>
+                      <p className="text-sm font-semibold">
+                        Hybrid Alpha
+                      </p>
 
-                    <span className="rounded bg-violet-900 px-2 py-1 text-sm font-semibold text-violet-200">
-                      {alpha.toFixed(
-                        2
-                      )}
+                      <p className="mt-1 text-xs text-slate-500">
+                        Response vs load balance
+                      </p>
+                    </div>
+
+                    <span className="rounded-lg bg-violet-900 px-3 py-1 font-semibold text-violet-200">
+                      {alpha.toFixed(2)}
                     </span>
                   </div>
 
@@ -795,102 +708,79 @@ export default function Home() {
                     min="0"
                     max="1"
                     step="0.05"
-                    value={
-                      alpha
-                    }
-                    onChange={(
-                      event
-                    ) =>
+                    value={alpha}
+                    onChange={(event) =>
                       handleAlphaChange(
                         Number(
-                          event.target
-                            .value
+                          event.target.value
                         )
                       )
                     }
-                    disabled={
-                      autoTrafficRunning
-                    }
-                    className="mt-3 w-full"
+                    disabled={autoTrafficRunning}
+                    className="mt-4 w-full"
                   />
 
-                  <div className="mt-2 flex justify-between text-xs text-slate-400">
+                  <div className="mt-2 flex justify-between text-xs text-slate-500">
                     <span>
-                      0 = Load focus
+                      Load Focus
                     </span>
 
                     <span>
-                      1 = Response focus
+                      Response Focus
                     </span>
                   </div>
 
-                  <p className="mt-3 text-xs leading-5 text-slate-400">
-                    Score = α ×
-                    R_fast + (1 -
-                    α) × R_bal
-                  </p>
+                  <div className="mt-3 rounded-lg bg-slate-950 p-3 text-center font-mono text-xs text-cyan-300">
+                    Score = α × R_fast +
+                    (1 − α) × R_bal
+                  </div>
                 </div>
               )}
 
-              {/* TRAFFIC RATE */}
               <div>
-                <label className="mb-1 block text-sm">
-                  Auto Traffic
-                  Rate
+                <label className="mb-2 block text-sm font-semibold text-slate-300">
+                  Auto Traffic Rate
                 </label>
 
                 <select
-                  value={
-                    requestsPerSecond
-                  }
-                  onChange={(
-                    event
-                  ) =>
+                  value={requestsPerSecond}
+                  onChange={(event) =>
                     handleTrafficRateChange(
                       Number(
-                        event.target
-                          .value
+                        event.target.value
                       )
                     )
                   }
-                  disabled={
-                    autoTrafficRunning
-                  }
-                  className="w-full rounded bg-slate-800 p-2 disabled:opacity-50"
+                  disabled={autoTrafficRunning}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 outline-none focus:border-blue-500 disabled:opacity-50"
                 >
                   <option value={1}>
-                    1 request /
-                    second
+                    1 request / second
                   </option>
 
                   <option value={2}>
-                    2 requests /
-                    second
+                    2 requests / second
                   </option>
 
                   <option value={5}>
-                    5 requests /
-                    second
+                    5 requests / second
                   </option>
 
                   <option value={10}>
-                    10 requests /
-                    second
+                    10 requests / second
                   </option>
                 </select>
               </div>
 
-              {/* START / STOP */}
               {!autoTrafficRunning ? (
                 <button
                   type="button"
                   onClick={
                     handleStartAutoTraffic
                   }
-                  className="w-full rounded bg-green-600 px-4 py-2 font-semibold hover:bg-green-500"
+                  className="w-full rounded-xl bg-green-600 px-4 py-3 font-semibold transition hover:bg-green-500"
                 >
-                  Start Auto
-                  Traffic
+                  ▶ Start Auto Traffic
                 </button>
               ) : (
                 <button
@@ -898,127 +788,73 @@ export default function Home() {
                   onClick={
                     handleStopAutoTraffic
                   }
-                  className="w-full rounded bg-red-600 px-4 py-2 font-semibold hover:bg-red-500"
+                  className="w-full rounded-xl bg-red-600 px-4 py-3 font-semibold transition hover:bg-red-500"
                 >
-                  Stop Auto
-                  Traffic
+                  ■ Stop Auto Traffic
                 </button>
               )}
 
-              {/* MANUAL REQUEST */}
               <div className="border-t border-slate-700 pt-5">
-                <h3 className="mb-4 font-semibold">
-                  Manual Request
-                </h3>
+                <div className="mb-4">
+                  <h3 className="font-semibold">
+                    Manual Request
+                  </h3>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Create one custom request.
+                  </p>
+                </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className="mb-1 block text-sm">
-                      Priority:{" "}
-                      {priority}
-                    </label>
+                  <SliderControl
+                    label="Priority"
+                    value={priority}
+                    min={1}
+                    max={5}
+                    onChange={(value) =>
+                      handlePriorityChange(
+                        value as RequestPriority
+                      )
+                    }
+                  />
 
-                    <input
-                      type="range"
-                      min="1"
-                      max="5"
-                      value={
-                        priority
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        handlePriorityChange(
-                          Number(
-                            event.target
-                              .value
-                          ) as RequestPriority
-                        )
-                      }
-                      className="w-full"
-                    />
-                  </div>
+                  <SliderControl
+                    label="Request Size"
+                    value={requestSize}
+                    min={1}
+                    max={10}
+                    onChange={
+                      handleRequestSizeChange
+                    }
+                  />
 
-                  <div>
-                    <label className="mb-1 block text-sm">
-                      Request Size:{" "}
-                      {
-                        requestSize
-                      }
-                    </label>
-
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value={
-                        requestSize
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        handleRequestSizeChange(
-                          Number(
-                            event.target
-                              .value
-                          )
-                        )
-                      }
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm">
-                      Complexity:{" "}
-                      {
-                        complexity
-                      }
-                    </label>
-
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value={
-                        complexity
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        handleComplexityChange(
-                          Number(
-                            event.target
-                              .value
-                          )
-                        )
-                      }
-                      className="w-full"
-                    />
-                  </div>
+                  <SliderControl
+                    label="Complexity"
+                    value={complexity}
+                    min={1}
+                    max={10}
+                    onChange={
+                      handleComplexityChange
+                    }
+                  />
 
                   <button
                     type="button"
                     onClick={
                       handleSendRequest
                     }
-                    disabled={
-                      autoTrafficRunning
-                    }
-                    className="w-full rounded bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={autoTrafficRunning}
+                    className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Send Manual
-                    Request
+                    Send Manual Request
                   </button>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={
-                  handleReset
-                }
-                className="w-full rounded bg-slate-700 px-4 py-2 hover:bg-slate-600"
+                onClick={handleReset}
+                className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-slate-700"
               >
                 Reset Simulation
               </button>
@@ -1026,23 +862,22 @@ export default function Home() {
           </section>
 
           {/* LIVE SERVERS */}
-          <section className="rounded-xl bg-slate-900 p-6 lg:col-span-2">
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 lg:col-span-2">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">
-                Live Servers
-              </h2>
+              <div>
+                <h2 className="text-xl font-semibold">
+                  Live Servers
+                </h2>
 
-              <div
-                className={`rounded-full px-3 py-1 text-sm ${
-                  autoTrafficRunning
-                    ? "bg-green-900 text-green-300"
-                    : "bg-slate-800 text-slate-400"
-                }`}
-              >
-                {autoTrafficRunning
-                  ? "Simulation Running"
-                  : "Simulation Stopped"}
+                <p className="mt-1 text-sm text-slate-500">
+                  Current load and response
+                  state of all five servers.
+                </p>
               </div>
+
+              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
+                5 Servers
+              </span>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -1053,93 +888,96 @@ export default function Home() {
                       (
                         server.currentLoad /
                         server.maxLoad
-                      ) *
-                        100,
+                      ) * 100,
                       100
                     );
 
                   return (
                     <div
-                      key={
-                        server.id
-                      }
-                      className="rounded-lg border border-slate-700 bg-slate-800 p-4"
+                      key={server.id}
+                      className="rounded-xl border border-slate-700 bg-slate-800/70 p-4 transition hover:border-slate-600"
                     >
                       <div className="flex items-center justify-between">
-                        <h3 className="font-semibold">
-                          {
-                            server.name
-                          }
-                        </h3>
+                        <div>
+                          <h3 className="font-semibold">
+                            {server.name}
+                          </h3>
 
-                        <span className="text-xs text-slate-400">
-                          {loadPercentage.toFixed(
-                            0
-                          )}
-                          %
+                          <p className="mt-1 text-xs text-slate-500">
+                            {
+                              server.bandwidthMbps
+                            }{" "}
+                            Mbps
+                          </p>
+                        </div>
+
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            server.status ===
+                            "available"
+                              ? "bg-green-950 text-green-300"
+                              : server.status ===
+                                  "busy"
+                                ? "bg-amber-950 text-amber-300"
+                                : "bg-red-950 text-red-300"
+                          }`}
+                        >
+                          {server.status}
                         </span>
                       </div>
 
-                      <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-700">
-                        <div
-                          className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                          style={{
-                            width: `${loadPercentage}%`,
-                          }}
-                        />
+                      <div className="mt-4">
+                        <div className="mb-2 flex justify-between text-xs">
+                          <span className="text-slate-500">
+                            Server Load
+                          </span>
+
+                          <span className="font-semibold">
+                            {loadPercentage.toFixed(
+                              0
+                            )}
+                            %
+                          </span>
+                        </div>
+
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-700">
+                          <div
+                            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                            style={{
+                              width: `${loadPercentage}%`,
+                            }}
+                          />
+                        </div>
                       </div>
 
-                      <div className="mt-4 space-y-1 text-sm text-slate-300">
-                        <p>
-                          Load:{" "}
-                          {server.currentLoad.toFixed(
+                      <div className="mt-5 grid grid-cols-2 gap-3">
+                        <ServerValue
+                          label="Load"
+                          value={`${server.currentLoad.toFixed(
                             1
-                          )}{" "}
-                          /{" "}
-                          {
-                            server.maxLoad
-                          }
-                        </p>
+                          )} / ${server.maxLoad}`}
+                        />
 
-                        <p>
-                          Response
-                          Time:{" "}
-                          {server.responseTime.toFixed(
+                        <ServerValue
+                          label="Response"
+                          value={`${server.responseTime.toFixed(
                             2
-                          )}{" "}
-                          ms
-                        </p>
+                          )} ms`}
+                        />
 
-                        <p>
-                          Bandwidth:{" "}
-                          {
-                            server.bandwidthMbps
-                          }{" "}
-                          Mbps
-                        </p>
-
-                        <p>
-                          Active
-                          Requests:{" "}
-                          {
+                        <ServerValue
+                          label="Active"
+                          value={
                             server.activeRequests
                           }
-                        </p>
+                        />
 
-                        <p>
-                          Completed
-                          Requests:{" "}
-                          {
+                        <ServerValue
+                          label="Completed"
+                          value={
                             server.completedRequests
                           }
-                        </p>
-
-                        <p>
-                          Status:{" "}
-                          {
-                            server.status
-                          }
-                        </p>
+                        />
                       </div>
                     </div>
                   );
@@ -1149,46 +987,59 @@ export default function Home() {
           </section>
         </div>
 
-        {/* LIVE METRICS */}
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <MetricBox
-            label="Queue Length"
-            value={
-              simulationState.requestQueue
-                .length
-            }
+        {/* METRICS */}
+        <section className="mt-8">
+          <SectionHeading
+            eyebrow="Metrics"
+            title="Live Performance"
+            description="Real-time statistics generated from the current simulation state."
           />
 
-          <MetricBox
-            label="Active Requests"
-            value={
-              simulationState.activeRequests
-                .length
-            }
-          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <MetricBox
+              label="Queue Length"
+              value={
+                simulationState.requestQueue
+                  .length
+              }
+              detail="Waiting"
+            />
 
-          <MetricBox
-            label="Total Requests"
-            value={
-              simulationState.metrics
-                .totalRequests
-            }
-          />
+            <MetricBox
+              label="Active Requests"
+              value={
+                simulationState.activeRequests
+                  .length
+              }
+              detail="Processing"
+            />
 
-          <MetricBox
-            label="Completed"
-            value={
-              simulationState.metrics
-                .completedRequests
-            }
-          />
+            <MetricBox
+              label="Total Requests"
+              value={
+                simulationState.metrics
+                  .totalRequests
+              }
+              detail="Generated"
+            />
 
-          <MetricBox
-            label="Avg Server Load"
-            value={simulationState.metrics.averageServerLoad.toFixed(
-              2
-            )}
-          />
+            <MetricBox
+              label="Completed"
+              value={
+                simulationState.metrics
+                  .completedRequests
+              }
+              detail="Finished"
+            />
+
+            <MetricBox
+              label="Avg Server Load"
+              value={simulationState.metrics.averageServerLoad.toFixed(
+                2
+              )}
+              detail="Across 5 servers"
+            />
+          </div>
         </section>
 
         {/* PRIORITY QUEUE */}
@@ -1196,37 +1047,37 @@ export default function Home() {
           requests={
             simulationState.requestQueue
           }
-          algorithm={
-            algorithm
-          }
+          algorithm={algorithm}
         />
 
         {/* LATEST REQUEST */}
-        <section className="mt-6 rounded-xl bg-slate-900 p-6">
-          <h2 className="mb-4 text-xl font-semibold">
-            Latest Request
-          </h2>
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="mb-5">
+            <h2 className="text-xl font-semibold">
+              Latest Request
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Most recently generated
+              request in the simulation.
+            </p>
+          </div>
 
           {!lastRequest ? (
-            <p className="text-slate-400">
-              No request has
-              been generated
+            <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950 p-8 text-center text-slate-500">
+              No request has been generated
               yet.
-            </p>
+            </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <RequestDetail
                 label="Request"
-                value={
-                  lastRequest.id
-                }
+                value={lastRequest.id}
               />
 
               <RequestDetail
                 label="Priority"
-                value={
-                  lastRequest.priority
-                }
+                value={lastRequest.priority}
               />
 
               <RequestDetail
@@ -1245,9 +1096,7 @@ export default function Home() {
 
               <RequestDetail
                 label="Status"
-                value={
-                  lastRequest.status
-                }
+                value={lastRequest.status}
               />
 
               <RequestDetail
@@ -1264,19 +1113,15 @@ export default function Home() {
                 value={`${(
                   lastRequest.waitingTimeMs ??
                   0
-                ).toFixed(
-                  2
-                )} ms`}
+                ).toFixed(2)} ms`}
               />
 
               <RequestDetail
-                label="Total Response Time"
+                label="Total Response"
                 value={`${(
                   lastRequest.totalResponseTimeMs ??
                   0
-                ).toFixed(
-                  2
-                )} ms`}
+                ).toFixed(2)} ms`}
               />
             </div>
           )}
@@ -1295,26 +1140,21 @@ export default function Home() {
           }
         />
 
-        {/* HYBRID TRANSPARENCY */}
-        {algorithm ===
-          "hybrid" && (
+        {/* HYBRID SCORE */}
+        {algorithm === "hybrid" && (
           <HybridScorePanel
-            request={
-              lastRequest
-            }
+            request={lastRequest}
             servers={
               simulationState.servers
             }
-            alpha={
-              alpha
-            }
+            alpha={alpha}
             highPriorityThreshold={
               HIGH_PRIORITY_THRESHOLD
             }
           />
         )}
 
-        {/* NETWORK TOPOLOGY */}
+        {/* TOPOLOGY */}
         <NetworkTopology
           selectedServerId={
             lastRequest?.assignedServerId
@@ -1324,7 +1164,7 @@ export default function Home() {
           }
         />
 
-        {/* LIVE CHARTS */}
+        {/* CHARTS */}
         <LiveCharts
           servers={
             simulationState.servers
@@ -1336,28 +1176,176 @@ export default function Home() {
             chartResetKey
           }
         />
+
+        {/* FOOTER */}
+        <footer className="mt-10 border-t border-slate-800 py-8 text-center">
+          <p className="font-semibold text-slate-300">
+            Adaptive Hybrid FRLB-PBLB
+            Load Balancing Simulator
+          </p>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Computer Networks Mini Project
+            · Research-based Web Simulation
+          </p>
+        </footer>
       </div>
     </main>
+  );
+}
+
+interface BadgeProps {
+  text: string;
+}
+
+function Badge({
+  text,
+}: BadgeProps) {
+  return (
+    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">
+      {text}
+    </span>
+  );
+}
+
+interface SectionHeadingProps {
+  eyebrow: string;
+  title: string;
+  description: string;
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: SectionHeadingProps) {
+  return (
+    <div className="mb-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-blue-400">
+        {eyebrow}
+      </p>
+
+      <h2 className="mt-1 text-2xl font-bold">
+        {title}
+      </h2>
+
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+interface ScenarioValueProps {
+  label: string;
+  value: string | number;
+}
+
+function ScenarioValue({
+  label,
+  value,
+}: ScenarioValueProps) {
+  return (
+    <div className="rounded-lg bg-slate-950/70 p-3">
+      <p className="text-xs text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-1 font-semibold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+interface SliderControlProps {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+}
+
+function SliderControl({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: SliderControlProps) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <label className="text-sm text-slate-300">
+          {label}
+        </label>
+
+        <span className="rounded bg-slate-800 px-2 py-1 text-xs font-semibold">
+          {value}
+        </span>
+      </div>
+
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(event) =>
+          onChange(
+            Number(event.target.value)
+          )
+        }
+        className="w-full"
+      />
+    </div>
+  );
+}
+
+interface ServerValueProps {
+  label: string;
+  value: string | number;
+}
+
+function ServerValue({
+  label,
+  value,
+}: ServerValueProps) {
+  return (
+    <div className="rounded-lg bg-slate-900 p-3">
+      <p className="text-xs text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm font-semibold">
+        {value}
+      </p>
+    </div>
   );
 }
 
 interface MetricBoxProps {
   label: string;
   value: string | number;
+  detail: string;
 }
 
 function MetricBox({
   label,
   value,
+  detail,
 }: MetricBoxProps) {
   return (
-    <div className="rounded-xl bg-slate-900 p-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
       <p className="text-sm text-slate-400">
         {label}
       </p>
 
-      <p className="mt-1 text-2xl font-semibold">
+      <p className="mt-2 text-3xl font-bold">
         {value}
+      </p>
+
+      <p className="mt-1 text-xs text-slate-600">
+        {detail}
       </p>
     </div>
   );
@@ -1373,12 +1361,12 @@ function RequestDetail({
   value,
 }: RequestDetailProps) {
   return (
-    <div>
-      <p className="text-xs text-slate-400">
+    <div className="rounded-xl bg-slate-800 p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-500">
         {label}
       </p>
 
-      <p>
+      <p className="mt-2 font-semibold text-slate-200">
         {value}
       </p>
     </div>
