@@ -16,10 +16,9 @@ import type {
 } from "@/types";
 
 import LiveCharts from "@/components/LiveCharts";
-
 import NetworkTopology from "@/components/NetworkTopology";
-
 import HybridScorePanel from "@/components/HybridScorePanel";
+import PriorityQueuePanel from "@/components/PriorityQueuePanel";
 
 import {
   initialServers,
@@ -79,10 +78,8 @@ export default function Home() {
       "hybrid"
     );
 
-  const [
-    alpha,
-    setAlpha,
-  ] = useState(0.5);
+  const [alpha, setAlpha] =
+    useState(0.5);
 
   const [
     priority,
@@ -264,7 +261,9 @@ export default function Home() {
     setSimulationState(
       (currentState) => ({
         ...currentState,
+
         algorithm,
+
         isRunning: true,
       })
     );
@@ -276,6 +275,7 @@ export default function Home() {
     setSimulationState(
       (currentState) => ({
         ...currentState,
+
         isRunning: false,
       })
     );
@@ -789,6 +789,14 @@ export default function Home() {
             </p>
           </div>
         </section>
+
+        {/* PRIORITY QUEUE */}
+        <PriorityQueuePanel
+          requests={
+            simulationState.requestQueue
+          }
+          algorithm={algorithm}
+        />
 
         {/* LATEST REQUEST */}
         <section className="mt-6 rounded-xl bg-slate-900 p-6">
